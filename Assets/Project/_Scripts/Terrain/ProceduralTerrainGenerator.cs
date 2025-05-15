@@ -1,116 +1,161 @@
-﻿using UnityEngine;
+﻿using System;
 
 namespace Project._Scripts.Terrain
 {
     using UnityEngine;
-
-/// <summary>
-/// Generates a procedural terrain mesh using Fractal Brownian Motion (fBm).
-/// Adjustable detail level allows control over terrain resolution.
-/// </summary>
-[RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
-public class ProceduralTerrainGenerator : MonoBehaviour
-{
-    [Header("Terrain Dimensions")]
-    public int Width = 50;      // Size along X axis (in world units)
-    public int Length = 50;     // Size along Z axis (in world units)
-    public float Height = 10f;  // Vertical scale
-
-    [Header("Noise Settings")]
-    public float Scale = 0.1f;
-    public int Octaves = 4;
-    public float Lacunarity = 2f;
-    public float Persistence = 0.5f;
-
-    [Header("Detail Settings")]
-    [Range(1, 3)]
-    public int Detail = 1; // Controls terrain resolution (1 = default, 3 = high poly)
-
-    private Mesh _mesh;
-    private Vector3[] _vertices;
-    private int[] _triangles;
-
-    void Start()
+    /// <summary>
+    /// Generates a terrain composed of multiple chunks using fBm.
+    /// Each chunk is an independent mesh to optimize rendering performance.
+    /// </summary>
+    [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
+    public class ProceduralTerrainGenerator : MonoBehaviour
     {
-        GenerateTerrain();
-    }
+        [Header("Terrain Dimensions")]
+        public int Width = 50;
+        public int Length = 50;
+        public float Height = 10f;
 
-    void GenerateTerrain()
-    {
-        _mesh = new Mesh();
-        GetComponent<MeshFilter>().mesh = _mesh;
+        [Header("Noise Settings")]
+        public float Scale = 0.1f;
+        public int Octaves = 4;
+        public float Lacunarity = 2f;
+        public float Persistence = 0.5f;
 
-        // Effective resolution with detail factor applied
-        int resX = Width * Detail;
-        int resZ = Length * Detail;
+        [Header("Detail & Chunking")]
+        [Range(1, 5)]
+        public int Detail = 1;
+        public int ChunkSize = 10;
+        public Material TerrainMaterial;
+        private static readonly int MinHeight = Shader.PropertyToID("_MinHeight");
+        private static readonly int MaxHeight = Shader.PropertyToID("_MaxHeight");
 
-        _vertices = new Vector3[(resX + 1) * (resZ + 1)];
-        for (int z = 0, i = 0; z <= resZ; z++)
+        void Start()
         {
-            for (int x = 0; x <= resX; x++, i++)
-            {
-                float xCoord = (float)x / resX * Width;
-                float zCoord = (float)z / resZ * Length;
-                float y = FractalBrownianMotion(xCoord * Scale, zCoord * Scale) * Height;
-
-                _vertices[i] = new Vector3(xCoord, y, zCoord);
-            }
+            GenerateChunks();
         }
 
-        _triangles = new int[resX * resZ * 6];
-        int vert = 0;
-        int tris = 0;
-        for (int z = 0; z < resZ; z++)
+        void GenerateChunks()
         {
-            for (int x = 0; x < resX; x++)
-            {
-                _triangles[tris + 0] = vert + 0;
-                _triangles[tris + 1] = vert + resX + 1;
-                _triangles[tris + 2] = vert + 1;
-                _triangles[tris + 3] = vert + 1;
-                _triangles[tris + 4] = vert + resX + 1;
-                _triangles[tris + 5] = vert + resX + 2;
+            int chunksX = Mathf.CeilToInt((float)Width / ChunkSize);
+            int chunksZ = Mathf.CeilToInt((float)Length / ChunkSize);
 
+            for (int cx = 0; cx < chunksX; cx++)
+            {
+                for (int cz = 0; cz < chunksZ; cz++)
+                {
+                    GenerateChunk(cx, cz);
+                }
+            }
+        }
+        
+        private void ApplyMaterial(MeshRenderer renderer)
+        {
+            renderer.sharedMaterial = TerrainMaterial;
+            Material mat = renderer.sharedMaterial;
+
+            // Bu değerler shader'a aktarılıyor
+            mat.SetFloat(MinHeight, 0f);
+            mat.SetFloat(MaxHeight, Height); // height senin terrain yüksekliğin
+        }
+
+
+
+        void GenerateChunk(int chunkX, int chunkZ)
+        {
+            int startX = chunkX * ChunkSize * Detail;
+            int startZ = chunkZ * ChunkSize * Detail;
+            int vertexCount = ChunkSize * Detail + 1;
+
+            Vector3[] vertices = new Vector3[vertexCount * vertexCount];
+            int[] triangles = new int[ChunkSize * Detail * ChunkSize * Detail * 6];
+
+            for (int z = 0, i = 0; z <= ChunkSize * Detail; z++)
+            {
+                for (int x = 0; x <= ChunkSize * Detail; x++, i++)
+                {
+                    float worldX = (startX + x) / (float)(Width * Detail) * Width;
+                    float worldZ = (startZ + z) / (float)(Length * Detail) * Length;
+                    float y = FractalBrownianMotion(worldX * Scale, worldZ * Scale) * Height;
+
+                    vertices[i] = new Vector3(worldX, y, worldZ);
+                }
+            }
+
+            int tris = 0;
+            int vert = 0;
+            for (int z = 0; z < ChunkSize * Detail; z++)
+            {
+                for (int x = 0; x < ChunkSize * Detail; x++)
+                {
+                    triangles[tris + 0] = vert + 0;
+                    triangles[tris + 1] = vert + vertexCount;
+                    triangles[tris + 2] = vert + 1;
+                    triangles[tris + 3] = vert + 1;
+                    triangles[tris + 4] = vert + vertexCount;
+                    triangles[tris + 5] = vert + vertexCount + 1;
+
+                    vert++;
+                    tris += 6;
+                }
                 vert++;
-                tris += 6;
             }
-            vert++;
+
+            // Create chunk GameObject
+            GameObject chunk = new GameObject($"Chunk_{chunkX}_{chunkZ}");
+            chunk.transform.parent = transform;
+
+            Mesh mesh = new Mesh();
+            mesh.vertices = vertices;
+            mesh.triangles = triangles;
+            mesh.RecalculateNormals();
+
+            MeshFilter filter = chunk.AddComponent<MeshFilter>();
+            filter.mesh = mesh;
+
+            MeshRenderer meshRenderer = chunk.AddComponent<MeshRenderer>();
+            ApplyMaterial(meshRenderer);
         }
 
-        _mesh.Clear();
-        _mesh.vertices = _vertices;
-        _mesh.triangles = _triangles;
-        _mesh.RecalculateNormals();
-    }
-
-    float FractalBrownianMotion(float x, float z)
-    {
-        float total = 0f;
-        float frequency = 1f;
-        float amplitude = 1f;
-        float maxAmplitude = 0f;
-
-        for (int i = 0; i < Octaves; i++)
+        float FractalBrownianMotion(float x, float z)
         {
-            total += Mathf.PerlinNoise(x * frequency, z * frequency) * amplitude;
-            maxAmplitude += amplitude;
-            amplitude *= Persistence;
-            frequency *= Lacunarity;
+            float total = 0f;
+            float frequency = 1f;
+            float amplitude = 1f;
+            float maxAmplitude = 0f;
+
+            for (int i = 0; i < Octaves; i++)
+            {
+                total += Mathf.PerlinNoise(x * frequency, z * frequency) * amplitude;
+                maxAmplitude += amplitude;
+                amplitude *= Persistence;
+                frequency *= Lacunarity;
+            }
+
+            return total / maxAmplitude;
         }
-
-        return total / maxAmplitude;
-    }
-
-    void OnDrawGizmos()
-    {
-        if (_vertices == null) return;
-
-        Gizmos.color = Color.black;
-        foreach (var v in _vertices)
+        
+        #if UNITY_EDITOR
+        void OnDrawGizmos()
         {
-            Gizmos.DrawSphere(transform.position + v, 0.05f);
-        }
-    }
-}
+            if (!Application.isPlaying) return;
 
+            foreach (Transform chunk in transform)
+            {
+                MeshFilter filter = chunk.GetComponent<MeshFilter>();
+                if (filter == null || filter.sharedMesh == null) continue;
+
+                Vector3[] verts = filter.sharedMesh.vertices;
+
+                Gizmos.color = Color.black;
+                foreach (var v in verts)
+                {
+                    Gizmos.DrawSphere(chunk.transform.position + v, 0.05f);
+                }
+            }
+        }
+#endif
+        
+    }
+
+    
 }
