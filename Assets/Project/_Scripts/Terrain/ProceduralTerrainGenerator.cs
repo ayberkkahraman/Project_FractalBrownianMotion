@@ -18,15 +18,15 @@ namespace Project._Scripts.Terrain
         [Range(1,50)]public float Height = 10f;
 
         [Header("Noise Settings")]
-        [Range(0.001f,0.2f)]public float Scale = 0.1f;
-        [Range(-2,8)]public int Octaves = 4;
-        [Range(1,50)]public float Lacunarity = 2f;
-        [Range(1,50)]public float Persistence = 0.5f;
+        [Range(0.001f,0.5f)]public float Scale = 0.1f;
+        [Range(1,12)]public int Octaves = 4;
+        [Range(0,4)]public float Lacunarity = 2f;
+        [Range(0f,2f)]public float Persistence = 0.5f;
 
         [Header("Detail & Chunking")]
         [Range(1, 10)]
         public int Detail = 1;
-        [Range(1,50)]public int ChunkSize = 10;
+        [Range(1,20)]public int ChunkSize = 10;
         public Material TerrainMaterial;
         public Material BoundaryMaterial;
         private static readonly int MinHeight = Shader.PropertyToID("_MinHeight");
@@ -38,11 +38,31 @@ namespace Project._Scripts.Terrain
         }
         void Start()
         {
+            GenerateTerrain();
+        }
+
+        public void GenerateTerrain()
+        {
             GenerateChunks();
             DrawTerrainWireBox();
             CamOwner.UpdateCam(GetTerrainCenter());
         }
-        
+
+        void ClearTerrain()
+        {
+            foreach (Transform child in transform)
+            {
+                Destroy(child.gameObject);
+            }
+        }
+
+        public void RegenerateTerrain()
+        {
+            ClearTerrain();
+            GenerateTerrain();
+            Debug.Log("Regenerated");
+        }
+
         private void DrawTerrainWireBox()
         {
             Vector3 min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
@@ -131,7 +151,7 @@ namespace Project._Scripts.Terrain
         }
 
 
-        void GenerateChunks()
+        public void GenerateChunks()
         {
             int chunksX = Mathf.CeilToInt((float)Width / ChunkSize);
             int chunksZ = Mathf.CeilToInt((float)Length / ChunkSize);

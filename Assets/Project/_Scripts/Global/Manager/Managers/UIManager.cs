@@ -1,40 +1,85 @@
-﻿using TMPro;
+﻿using System;
+using System.Collections.Generic;
+using System.Reflection;
+using Project._Scripts.Terrain;
+using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Project._Scripts.Global.Manager.Managers
 {
   public class UIManager : MonoBehaviour
   {
+    public ProceduralTerrainGenerator terrainGenerator;
     
-    [SerializeField] private Slider WidthSlider;
-    [SerializeField] private Slider HeightSlider;
-    [SerializeField] private Slider NoiseSpeedSlider;
-    [Space]
-    [SerializeField] private TMP_Text WidthText;
-    [SerializeField] private TMP_Text HeightText;
-    [SerializeField] private TMP_Text NoiseSpeedText;
-    
-    public void SetWidthSlider(ref int value)
+    [Serializable]
+    public struct Setting
     {
-      var sliderValue = Mathf.Clamp(Mathf.CeilToInt(WidthSlider.value * 150f), 1, 150);
-      value = sliderValue;
-      WidthText.text = $"{sliderValue}";
-    }
-    
-    public void SetLengthSlider(ref int value)
-    {
-      var sliderValue = Mathf.Clamp(Mathf.CeilToInt(HeightSlider.value * 150f), 1, 150);
-      value = sliderValue;
-      HeightText.text = $"{sliderValue}";
+      public Slider Slider; 
+      public TMP_Text ValueText;
+      public float MinValue;
+      public float MaxValue;
     }
 
-    public void SetNoiseSpeedSlider(ref float value)
+    public List<Setting> Settings;
+    public Setting GetSetting(string settingName) => Settings.Find(x => x.Slider.name == settingName);
+
+    [SerializeField]private float debounceDelay = 0.3f; // saniye cinsinden bekleme süresi
+    private float debounceTimer = 0f;
+    private bool pendingUpdate = false;
+
+    void Update()
     {
-      var currentSliderValue = NoiseSpeedSlider.value * 10f;
-      var sliderValue = Mathf.Clamp(currentSliderValue, 0, 10);
-      value = sliderValue;
-      NoiseSpeedText.text = $"{(double)currentSliderValue:F1}";
+      if (pendingUpdate)
+      {
+        debounceTimer -= Time.deltaTime;
+        if (debounceTimer <= 0f)
+        {
+          terrainGenerator.RegenerateTerrain();
+          pendingUpdate = false;
+        }
+      }
     }
+
+    public void SetSlider(string settingName)
+    {
+      Setting setting = GetSetting(settingName);
+      var sliderValue = Mathf.Clamp(Mathf.CeilToInt(setting.Slider.value * setting.MaxValue), setting.MinValue, setting.MaxValue);
+      setting.ValueText.text = $"{sliderValue}";
+
+      SetTerrainVariable(settingName, sliderValue);
+
+      debounceTimer = debounceDelay;
+      pendingUpdate = true;
+    }
+    
+    void SetTerrainVariable(string variableName, object value)
+    {
+      if (terrainGenerator == null)
+      {
+        Debug.LogWarning("TerrainGenerator referansı atanmadı.");
+        return;
+      }
+
+      FieldInfo field = typeof(ProceduralTerrainGenerator).GetField(variableName);
+      if (field != null)
+      {
+        try
+        {
+          var convertedValue = Convert.ChangeType(value, field.FieldType);
+          field.SetValue(terrainGenerator, convertedValue);
+        }
+        catch (Exception e)
+        {
+          Debug.LogWarning($"'{variableName}' için değer atanamadı: {e.Message}");
+        }
+      }
+      else
+      {
+        Debug.LogWarning($"'{variableName}' adında bir field bulunamadı.");
+      }
+    }
+
   }
 }
