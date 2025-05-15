@@ -12,6 +12,7 @@ public class Setting : MonoBehaviour
   
   private Slider _slider; 
   private TMP_Text _valueText;
+  private TMP_Text _headerText;
   public float MinValue;
   public float MaxValue;
   
@@ -27,6 +28,10 @@ public class Setting : MonoBehaviour
     terrainGenerator = ManagerCore.Instance.GetInstance<ProceduralTerrainGenerator>();
     _slider = GetComponentInChildren<Slider>();
     _valueText = GetComponentsInChildren<TMP_Text>().FirstOrDefault(x => x.name == "ValueText");
+    _headerText = GetComponentsInChildren<TMP_Text>().FirstOrDefault(x => x.name == "HeaderText");
+
+    _headerText.text = gameObject.name;
+    
     _slider.onValueChanged.AddListener(delegate { SetSlider();});
   }
 

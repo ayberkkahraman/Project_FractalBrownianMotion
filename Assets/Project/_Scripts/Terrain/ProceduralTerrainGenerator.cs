@@ -19,7 +19,7 @@ namespace Project._Scripts.Terrain
 
         [Header("Noise Settings")]
         [Range(0.001f,0.5f)]public float Scale = 0.1f;
-        [Range(1,12)]public int Octaves = 4;
+        [Range(1,6)]public int Octaves = 4;
         [Range(0,4)]public float Lacunarity = 2f;
         [Range(0f,2f)]public float Persistence = 0.5f;
 
@@ -87,7 +87,7 @@ namespace Project._Scripts.Terrain
             LineRenderer lineRenderer = wireObj.AddComponent<LineRenderer>();
 
             lineRenderer.loop = false;
-            lineRenderer.widthMultiplier = 0.05f;
+            lineRenderer.widthMultiplier = 0.2f;
             lineRenderer.material = BoundaryMaterial;
             lineRenderer.startColor = Color.red;
             lineRenderer.endColor = Color.red;
@@ -106,8 +106,7 @@ namespace Project._Scripts.Terrain
             corners[6] = new Vector3(max.x, max.y, max.z);
             corners[7] = new Vector3(min.x, max.y, max.z);
 
-            Vector3[] lines = new Vector3[]
-            {
+            Vector3[] lines = {
                 corners[0], corners[1],
                 corners[1], corners[2],
                 corners[2], corners[3],
