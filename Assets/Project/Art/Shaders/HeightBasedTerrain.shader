@@ -1,10 +1,9 @@
-Shader "Custom/HeightBasedTerrainWithMidHeightAndGradientIntensity"
+Shader "Custom/HeightBasedTerrain"
 {
     Properties
     {
-        _MinHeight ("Min Height", Float) = 0
-        _MidHeight ("Mid Height", Float) = 5
-        _MaxHeight ("Max Height", Float) = 10
+        _MinHeight ("Min Height", Range(0,20)) = 0
+        _MidHeight ("Mid (Max) Height", Range(10,100)) = 20
 
         _LowColor ("Low Altitude Color", Color) = (0.4, 0.26, 0.13, 1)
         _LowMidColor ("Low-Mid Altitude Color", Color) = (0.25, 0.35, 0.12, 1)
@@ -31,7 +30,6 @@ Shader "Custom/HeightBasedTerrainWithMidHeightAndGradientIntensity"
 
             float _MinHeight;
             float _MidHeight;
-            float _MaxHeight;
 
             fixed4 _LowColor;
             fixed4 _LowMidColor;
@@ -63,65 +61,52 @@ Shader "Custom/HeightBasedTerrainWithMidHeightAndGradientIntensity"
 
             fixed4 frag (v2f i) : SV_Target
             {
+                // Vertex yüksekliği
                 float h = i.height;
+
+                // Height değerini [MinHeight, MidHeight] aralığında kısıtla
+                h = clamp(h, _MinHeight, _MidHeight);
 
                 fixed3 baseColor;
 
-                // Keskin katmanlı renkler (gradient kapalı)
                 if (_UseGradient < 0.5)
                 {
-                    if (h < _MinHeight + (_MidHeight - _MinHeight) * 0.2) baseColor = _LowColor.rgb;
-                    else if (h < _MinHeight + (_MidHeight - _MinHeight) * 0.4) baseColor = _LowMidColor.rgb;
-                    else if (h < _MinHeight + (_MidHeight - _MinHeight) * 0.6) baseColor = _MidColor.rgb;
-                    else if (h < _MinHeight + (_MidHeight - _MinHeight) * 0.8) baseColor = _HighMidColor.rgb;
+                    // Gradient kapalı: katmanlar arası keskin geçişler
+                    float range = _MidHeight - _MinHeight;
+                    float normalizedHeight = (h - _MinHeight) / range;
+
+                    if (normalizedHeight < 0.2) baseColor = _LowColor.rgb;
+                    else if (normalizedHeight < 0.4) baseColor = _LowMidColor.rgb;
+                    else if (normalizedHeight < 0.6) baseColor = _MidColor.rgb;
+                    else if (normalizedHeight < 0.8) baseColor = _HighMidColor.rgb;
                     else baseColor = _HighColor.rgb;
                 }
                 else
                 {
-                    // Gradient açık - katmanlar arası yumuşak geçişler
+                    // Gradient açık: katmanlar arası yumuşak geçişler
+                    float range = _MidHeight - _MinHeight;
+                    float t = saturate((h - _MinHeight) / range);
+
                     fixed3 colorLowMid;
-                    fixed3 colorHighMid;
-                    float t;
-
-                    if (h < _MidHeight)
-                    {
-                        t = saturate((h - _MinHeight) / (_MidHeight - _MinHeight));
-                        if (t < 0.25)
-                            colorLowMid = lerp(_LowColor.rgb, _LowMidColor.rgb, t / 0.25);
-                        else if (t < 0.5)
-                            colorLowMid = lerp(_LowMidColor.rgb, _MidColor.rgb, (t - 0.25) / 0.25);
-                        else if (t < 0.75)
-                            colorLowMid = lerp(_MidColor.rgb, _HighMidColor.rgb, (t - 0.5) / 0.25);
-                        else
-                            colorLowMid = lerp(_HighMidColor.rgb, _HighColor.rgb, (t - 0.75) / 0.25);
-                        baseColor = colorLowMid;
-                    }
+                    if (t < 0.25)
+                        colorLowMid = lerp(_LowColor.rgb, _LowMidColor.rgb, t / 0.25);
+                    else if (t < 0.5)
+                        colorLowMid = lerp(_LowMidColor.rgb, _MidColor.rgb, (t - 0.25) / 0.25);
+                    else if (t < 0.75)
+                        colorLowMid = lerp(_MidColor.rgb, _HighMidColor.rgb, (t - 0.5) / 0.25);
                     else
-                    {
-                        t = saturate((h - _MidHeight) / (_MaxHeight - _MidHeight));
-                        if (t < 0.25)
-                            colorHighMid = lerp(_LowColor.rgb, _LowMidColor.rgb, t / 0.25);
-                        else if (t < 0.5)
-                            colorHighMid = lerp(_LowMidColor.rgb, _MidColor.rgb, (t - 0.25) / 0.25);
-                        else if (t < 0.75)
-                            colorHighMid = lerp(_MidColor.rgb, _HighMidColor.rgb, (t - 0.5) / 0.25);
-                        else
-                            colorHighMid = lerp(_HighMidColor.rgb, _HighColor.rgb, (t - 0.75) / 0.25);
-                        baseColor = colorHighMid;
-                    }
+                        colorLowMid = lerp(_HighMidColor.rgb, _HighColor.rgb, (t - 0.75) / 0.25);
 
-                    // GradientIntensity ile blend yapıyoruz:
-                    // baseColor ile en yakın katman rengini karıştıracağız
-
-                    // En yakın katman rengi:
+                    // En yakın katman rengini hesapla (keskin geçişteki gibi)
                     fixed3 nearestColor;
-                    if (h < _MinHeight + (_MidHeight - _MinHeight) * 0.2) nearestColor = _LowColor.rgb;
-                    else if (h < _MinHeight + (_MidHeight - _MinHeight) * 0.4) nearestColor = _LowMidColor.rgb;
-                    else if (h < _MinHeight + (_MidHeight - _MinHeight) * 0.6) nearestColor = _MidColor.rgb;
-                    else if (h < _MinHeight + (_MidHeight - _MinHeight) * 0.8) nearestColor = _HighMidColor.rgb;
+                    if (t < 0.2) nearestColor = _LowColor.rgb;
+                    else if (t < 0.4) nearestColor = _LowMidColor.rgb;
+                    else if (t < 0.6) nearestColor = _MidColor.rgb;
+                    else if (t < 0.8) nearestColor = _HighMidColor.rgb;
                     else nearestColor = _HighColor.rgb;
 
-                    baseColor = lerp(nearestColor, baseColor, _GradientIntensity);
+                    // GradientIntensity ile blend işlemi
+                    baseColor = lerp(nearestColor, colorLowMid, _GradientIntensity);
                 }
 
                 return fixed4(baseColor, 1.0);

@@ -7,12 +7,11 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Terrain
+  m_Name: Terrain_Unlit
   m_Shader: {fileID: 4800000, guid: f60ee6348a1a9f747812c5f4225bf340, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords:
-  - _USE_GRADIENT
+  m_ValidKeywords: []
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -30,11 +29,11 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _GradientIntensity: 0
+    - _GradientIntensity: 1
     - _MaxHeight: 20
     - _MidHeight: 20
     - _MinHeight: 12
-    - _UseGradient: 1
+    - _UseGradient: 0
     m_Colors:
     - _Color1: {r: 0.39999998, g: 0.25999996, b: 0.12999997, a: 1}
     - _Color2: {r: 0.19999996, g: 0.39999998, b: 0.09999997, a: 1}

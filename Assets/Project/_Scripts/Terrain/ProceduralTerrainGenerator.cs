@@ -22,7 +22,7 @@ namespace Project._Scripts.Terrain
         public float Persistence = 0.5f;
 
         [Header("Detail & Chunking")]
-        [Range(1, 5)]
+        [Range(1, 10)]
         public int Detail = 1;
         public int ChunkSize = 10;
         public Material TerrainMaterial;
@@ -52,10 +52,6 @@ namespace Project._Scripts.Terrain
         {
             renderer.sharedMaterial = TerrainMaterial;
             Material mat = renderer.sharedMaterial;
-
-            // Bu değerler shader'a aktarılıyor
-            mat.SetFloat(MinHeight, 0f);
-            mat.SetFloat(MaxHeight, Height); // height senin terrain yüksekliğin
         }
 
 
