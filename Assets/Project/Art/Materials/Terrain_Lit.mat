@@ -26,9 +26,9 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
-    - _GradientActive: 0.61
-    - _GradientIntensity: 1.43
-    - _MaxHeight: 25.5
+    - _GradientActive: 0.83
+    - _GradientIntensity: 1.23
+    - _MaxHeight: 16.1
     - _MidHeight: 20
     - _MinHeight: 0
     - _UseGradient: 1
