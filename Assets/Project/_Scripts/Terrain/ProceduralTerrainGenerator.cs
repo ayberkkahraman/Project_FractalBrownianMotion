@@ -97,9 +97,6 @@ namespace Project._Scripts.Terrain
 
         public void UpdateSize()
         {
-            _center = GetTerrainCenter();
-            if(_previousCenter == _center) return;
-            
             _previousCenter = _center;
             CamOwner.UpdateCam(_center);
             CamOwner.CameraManager.UpdateDistance(((Width+Length)/2) + 15f);
@@ -178,12 +175,13 @@ namespace Project._Scripts.Terrain
                     GenerateChunk(cx, cz);
                 }
             }
+
+            _center = GetTerrainCenter();
         }
         
         private void ApplyMaterial(MeshRenderer renderer)
         {
             renderer.sharedMaterial = TerrainMaterial;
-            Material mat = renderer.sharedMaterial;
         }
 
 

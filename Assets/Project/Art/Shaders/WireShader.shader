@@ -9,7 +9,7 @@ Shader "Unlit/WireShader"
             Cull Off
             Lighting Off
             Fog { Mode Off }
-            Color (1, 0, 0, 1)
+            Color (256, 256, 256, 1)
         }
     }
 }
