@@ -5,11 +5,13 @@ using Project._Scripts.Global.Manager.Core;
 using Project._Scripts.Terrain;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 public class Setting : MonoBehaviour
 {
-  public ProceduralTerrainGenerator terrainGenerator;
-  
+  private ProceduralTerrainGenerator _terrainGenerator;
+
+  public UnityEvent AdditiveEvent;
   private Slider _slider; 
   private TMP_Text _valueText;
   private TMP_Text _headerText;
@@ -25,12 +27,12 @@ public class Setting : MonoBehaviour
 
   private void Start()
   {
-    terrainGenerator = ManagerCore.Instance.GetInstance<ProceduralTerrainGenerator>();
+    _terrainGenerator = ManagerCore.Instance.GetInstance<ProceduralTerrainGenerator>();
     _slider = GetComponentInChildren<Slider>();
     _valueText = GetComponentsInChildren<TMP_Text>().FirstOrDefault(x => x.name == "ValueText");
     _headerText = GetComponentsInChildren<TMP_Text>().FirstOrDefault(x => x.name == "HeaderText");
 
-    _headerText.text = gameObject.name;
+    _headerText!.text = gameObject.name;
     
     _slider.onValueChanged.AddListener(delegate { SetSlider();});
   }
@@ -42,7 +44,8 @@ public class Setting : MonoBehaviour
       debounceTimer -= Time.deltaTime;
       if (debounceTimer <= 0f)
       {
-        terrainGenerator.RegenerateTerrain();
+        _terrainGenerator.RegenerateTerrain();
+        AdditiveEvent?.Invoke();
         pendingUpdate = false;
       }
     }
@@ -71,7 +74,7 @@ public class Setting : MonoBehaviour
     
   void SetTerrainVariable(string variableName, object value)
   {
-    if (terrainGenerator == null)
+    if (_terrainGenerator == null)
     {
       Debug.LogWarning("TerrainGenerator referansı atanmadı.");
       return;
@@ -83,7 +86,7 @@ public class Setting : MonoBehaviour
       try
       {
         var convertedValue = Convert.ChangeType(value, field.FieldType);
-        field.SetValue(terrainGenerator, convertedValue);
+        field.SetValue(_terrainGenerator, convertedValue);
       }
       catch (Exception e)
       {

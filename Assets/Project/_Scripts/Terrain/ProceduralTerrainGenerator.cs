@@ -1,4 +1,5 @@
-﻿using System;
+﻿using System.Buffers;
+using System.Collections;
 
 namespace Project._Scripts.Terrain
 {
@@ -29,8 +30,17 @@ namespace Project._Scripts.Terrain
         [Range(1,20)]public int ChunkSize = 10;
         public Material TerrainMaterial;
         public Material BoundaryMaterial;
-        private static readonly int MinHeight = Shader.PropertyToID("_MinHeight");
-        private static readonly int MaxHeight = Shader.PropertyToID("_MaxHeight");
+
+        private Vector3 _camTarget;
+        private Vector3 _previousCenter;
+        private Vector3 _center;
+        private int _initialXPosition;
+        private int _initialZPosition;
+        private int _vertexCount;
+        private int _vertArrayLength;
+        private int _trisArrayLength;
+        private Vector3[] _vertices;
+        private int[] _triangles;
 
         private void Awake()
         {
@@ -38,14 +48,29 @@ namespace Project._Scripts.Terrain
         }
         void Start()
         {
+            _center = GetTerrainCenter();
+            _previousCenter = _center;
+            
             GenerateTerrain();
+            UpdateSize();
+        }
+
+        public void UpdateSize()
+        {
+            _center = GetTerrainCenter();
+            if(_previousCenter == _center) return;
+            
+            _previousCenter = _center;
+            CamOwner.UpdateCam(_center);
+            CamOwner.CameraManager.UpdateDistance(((Width+Length)/2) + 15f);
+            DrawTerrainWireBox();
         }
 
         public void GenerateTerrain()
         {
             GenerateChunks();
-            DrawTerrainWireBox();
-            CamOwner.UpdateCam(GetTerrainCenter());
+            // DrawTerrainWireBox();
+            
         }
 
         void ClearTerrain()
@@ -60,7 +85,6 @@ namespace Project._Scripts.Terrain
         {
             ClearTerrain();
             GenerateTerrain();
-            Debug.Log("Regenerated");
         }
 
         private void DrawTerrainWireBox()
@@ -164,6 +188,25 @@ namespace Project._Scripts.Terrain
             }
         }
         
+        public IEnumerator GenerateChunksCoroutine()
+        {
+            int chunksX = Mathf.CeilToInt((float)Width / ChunkSize);
+            int chunksZ = Mathf.CeilToInt((float)Length / ChunkSize);
+
+            for (int cx = 0; cx < chunksX; cx++)
+            {
+                for (int cz = 0; cz < chunksZ; cz++)
+                {
+                    GenerateChunk(cx, cz);
+
+                    // Belirli aralıklarla frame başına çalış
+                    if ((cx * chunksZ + cz) % 2 == 0)
+                        yield return null;
+                }
+            }
+        }
+
+        
         private void ApplyMaterial(MeshRenderer renderer)
         {
             renderer.sharedMaterial = TerrainMaterial;
@@ -174,22 +217,25 @@ namespace Project._Scripts.Terrain
 
         void GenerateChunk(int chunkX, int chunkZ)
         {
-            int startX = chunkX * ChunkSize * Detail;
-            int startZ = chunkZ * ChunkSize * Detail;
-            int vertexCount = ChunkSize * Detail + 1;
+            _initialXPosition = chunkX * ChunkSize * Detail;
+            _initialZPosition = chunkZ * ChunkSize * Detail;
+            _vertexCount = ChunkSize * Detail + 1;
 
-            Vector3[] vertices = new Vector3[vertexCount * vertexCount];
-            int[] triangles = new int[ChunkSize * Detail * ChunkSize * Detail * 6];
+            _vertArrayLength = _vertexCount * _vertexCount;
+            _trisArrayLength = ChunkSize * Detail * ChunkSize * Detail * 6;
+
+            _vertices = ArrayPool<Vector3>.Shared.Rent(_vertArrayLength);
+            _triangles = ArrayPool<int>.Shared.Rent(_trisArrayLength);
 
             for (int z = 0, i = 0; z <= ChunkSize * Detail; z++)
             {
                 for (int x = 0; x <= ChunkSize * Detail; x++, i++)
                 {
-                    float worldX = (startX + x) / (float)(Width * Detail) * Width;
-                    float worldZ = (startZ + z) / (float)(Length * Detail) * Length;
+                    float worldX = (_initialXPosition + x) / (float)(Width * Detail) * Width;
+                    float worldZ = (_initialZPosition + z) / (float)(Length * Detail) * Length;
                     float y = FractalBrownianMotion(worldX * Scale, worldZ * Scale) * Height;
 
-                    vertices[i] = new Vector3(worldX, y, worldZ);
+                    _vertices[i] = new Vector3(worldX, y, worldZ);
                 }
             }
 
@@ -199,12 +245,12 @@ namespace Project._Scripts.Terrain
             {
                 for (int x = 0; x < ChunkSize * Detail; x++)
                 {
-                    triangles[tris + 0] = vert + 0;
-                    triangles[tris + 1] = vert + vertexCount;
-                    triangles[tris + 2] = vert + 1;
-                    triangles[tris + 3] = vert + 1;
-                    triangles[tris + 4] = vert + vertexCount;
-                    triangles[tris + 5] = vert + vertexCount + 1;
+                    _triangles[tris + 0] = vert + 0;
+                    _triangles[tris + 1] = vert + _vertexCount;
+                    _triangles[tris + 2] = vert + 1;
+                    _triangles[tris + 3] = vert + 1;
+                    _triangles[tris + 4] = vert + _vertexCount;
+                    _triangles[tris + 5] = vert + _vertexCount + 1;
 
                     vert++;
                     tris += 6;
@@ -212,14 +258,18 @@ namespace Project._Scripts.Terrain
                 vert++;
             }
 
-            // Create chunk GameObject
-            GameObject chunk = new GameObject($"Chunk_{chunkX}_{chunkZ}");
-            chunk.transform.parent = transform;
+            GameObject chunk = new GameObject($"Chunk_{chunkX}_{chunkZ}")
+            {
+                transform =
+                {
+                    parent = transform
+                }
+            };
 
             Mesh mesh = new Mesh
             {
-                vertices = vertices,
-                triangles = triangles
+                vertices = _vertices[..(_vertexCount * _vertexCount)],
+                triangles = _triangles[..tris]
             };
             mesh.RecalculateNormals();
 
@@ -228,8 +278,11 @@ namespace Project._Scripts.Terrain
 
             MeshRenderer meshRenderer = chunk.AddComponent<MeshRenderer>();
             ApplyMaterial(meshRenderer);
-        }
 
+            ArrayPool<Vector3>.Shared.Return(_vertices, clearArray: false);
+            ArrayPool<int>.Shared.Return(_triangles, clearArray: false);
+        }
+        
         float FractalBrownianMotion(float x, float z)
         {
             float total = 0f;
