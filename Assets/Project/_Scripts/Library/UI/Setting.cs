@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using Project._Scripts.Global.Manager.Core;
@@ -33,6 +34,8 @@ public class Setting : MonoBehaviour
     _headerText = GetComponentsInChildren<TMP_Text>().FirstOrDefault(x => x.name == "HeaderText");
 
     _headerText!.text = gameObject.name;
+
+    GetTerrainVariable(gameObject.name);
     
     _slider.onValueChanged.AddListener(delegate { SetSlider();});
   }
@@ -62,7 +65,7 @@ public class Setting : MonoBehaviour
         break;
       case Type.Float:
         sliderValue = Mathf.Clamp(_slider.value * MaxValue, MinValue, MaxValue);
-        _valueText.text = $"{sliderValue:F1}";
+        _valueText.text = $"{sliderValue:F2}";
         break;
     }
     
@@ -70,6 +73,61 @@ public class Setting : MonoBehaviour
 
     debounceTimer = debounceDelay;
     pendingUpdate = true;
+  }
+  void GetTerrainVariable(string variableName)
+  {
+    if (_terrainGenerator == null)
+    {
+      Debug.LogWarning("TerrainGenerator referansı atanmadı.");
+      return;
+    }
+
+    FieldInfo field = typeof(ProceduralTerrainGenerator).GetField(variableName);
+    if (field != null)
+    {
+      try
+      {
+        object value = field.GetValue(_terrainGenerator);
+        float sliderValue = 0;
+
+        switch ( value )
+        {
+          case float floatValue:
+            sliderValue = floatValue;
+            break;
+          case int intValue:
+            sliderValue = intValue;
+            break;
+          case double doubleValue:
+            sliderValue = (float)doubleValue;
+            break;
+          default:
+            Debug.LogWarning($"'{variableName}' field tipi desteklenmiyor: {field.FieldType}");
+            break;
+        }
+        
+        
+        switch ( ValueType )
+        {
+          case Type.Integer:
+            _valueText.text = $"{sliderValue}";
+            break;
+          case Type.Float:
+            _valueText.text = $"{sliderValue:F2}";
+            break;
+        }
+
+        _slider.value = sliderValue / (MaxValue - MinValue);
+      }
+      catch (Exception e)
+      {
+        Debug.LogWarning($"'{variableName}' için değer alınamadı: {e.Message}");
+      }
+    }
+    else
+    {
+      Debug.LogWarning($"'{variableName}' adında bir field bulunamadı.");
+    }
   }
     
   void SetTerrainVariable(string variableName, object value)

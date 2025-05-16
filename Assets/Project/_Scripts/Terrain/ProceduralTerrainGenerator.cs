@@ -31,6 +31,7 @@ namespace Project._Scripts.Terrain
         public Material TerrainMaterial;
         public Material BoundaryMaterial;
 
+        public bool DrawTerrainBoundary { get; set; }
         private Vector3 _camTarget;
         private Vector3 _previousCenter;
         private Vector3 _center;
@@ -40,6 +41,7 @@ namespace Project._Scripts.Terrain
         private int _vertArrayLength;
         private int _trisArrayLength;
         private Vector3[] _vertices;
+        private Vector3[] _boundaryVerts = new Vector3[8];
         private int[] _triangles;
 
         private void Awake()
@@ -53,7 +55,45 @@ namespace Project._Scripts.Terrain
             
             GenerateTerrain();
             UpdateSize();
+            
         }
+        
+        void OnRenderObject()
+        {
+            DrawTerrainWireBox();
+        }
+
+        public void DrawBoundary()
+        {
+            BoundaryMaterial.SetPass(0);
+            
+            Vector3 min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+            Vector3 max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
+
+            foreach (Transform chunk in transform)
+            {
+                MeshFilter filter = chunk.GetComponent<MeshFilter>();
+                if (filter == null || filter.sharedMesh == null) continue;
+
+                foreach (Vector3 v in filter.sharedMesh.vertices)
+                {
+                    Vector3 worldV = chunk.TransformPoint(v);
+                    min = Vector3.Min(min, worldV);
+                    max = Vector3.Max(max, worldV);
+                }
+            }
+
+            
+            _boundaryVerts[0] = new Vector3(min.x, min.y, min.z);
+            _boundaryVerts[1] = new Vector3(max.x, min.y, min.z);
+            _boundaryVerts[2] = new Vector3(max.x, min.y, max.z);
+            _boundaryVerts[3] = new Vector3(min.x, min.y, max.z);
+            _boundaryVerts[4] = new Vector3(min.x, max.y, min.z);
+            _boundaryVerts[5] = new Vector3(max.x, max.y, min.z);
+            _boundaryVerts[6] = new Vector3(max.x, max.y, max.z);
+            _boundaryVerts[7] = new Vector3(min.x, max.y, max.z);
+        }
+
 
         public void UpdateSize()
         {
@@ -63,14 +103,12 @@ namespace Project._Scripts.Terrain
             _previousCenter = _center;
             CamOwner.UpdateCam(_center);
             CamOwner.CameraManager.UpdateDistance(((Width+Length)/2) + 15f);
-            DrawTerrainWireBox();
+            DrawBoundary();
         }
 
         public void GenerateTerrain()
         {
             GenerateChunks();
-            // DrawTerrainWireBox();
-            
         }
 
         void ClearTerrain()
@@ -86,69 +124,23 @@ namespace Project._Scripts.Terrain
             ClearTerrain();
             GenerateTerrain();
         }
-
-        private void DrawTerrainWireBox()
+        
+        void Draw(Vector3 a, Vector3 b) { GL.Vertex(a); GL.Vertex(b); }
+        
+        public void DrawTerrainWireBox()
         {
-            Vector3 min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
-            Vector3 max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
+            BoundaryMaterial.SetPass(0);
+            GL.Begin(GL.LINES);
+            GL.Color(Color.red);
+            
+            // Alt
+            Draw(_boundaryVerts[0], _boundaryVerts[1]); Draw(_boundaryVerts[1], _boundaryVerts[2]); Draw(_boundaryVerts[2], _boundaryVerts[3]); Draw(_boundaryVerts[3], _boundaryVerts[0]);
+            // Üst
+            Draw(_boundaryVerts[4], _boundaryVerts[5]); Draw(_boundaryVerts[5], _boundaryVerts[6]); Draw(_boundaryVerts[6], _boundaryVerts[7]); Draw(_boundaryVerts[7], _boundaryVerts[4]);
+            // Dikey
+            Draw(_boundaryVerts[0], _boundaryVerts[4]); Draw(_boundaryVerts[1], _boundaryVerts[5]); Draw(_boundaryVerts[2], _boundaryVerts[6]); Draw(_boundaryVerts[3], _boundaryVerts[7]);
 
-            foreach (Transform chunk in transform)
-            {
-                MeshFilter filter = chunk.GetComponent<MeshFilter>();
-                if (filter == null || filter.sharedMesh == null) continue;
-
-                Vector3[] verts = filter.sharedMesh.vertices;
-                foreach (var v in verts)
-                {
-                    Vector3 worldV = chunk.transform.TransformPoint(v);
-                    min = Vector3.Min(min, worldV);
-                    max = Vector3.Max(max, worldV);
-                }
-            }
-
-            GameObject wireObj = new GameObject("TerrainWireBounds");
-            wireObj.transform.SetParent(transform);
-            LineRenderer lineRenderer = wireObj.AddComponent<LineRenderer>();
-
-            lineRenderer.loop = false;
-            lineRenderer.widthMultiplier = 0.2f;
-            lineRenderer.material = BoundaryMaterial;
-            lineRenderer.startColor = Color.red;
-            lineRenderer.endColor = Color.red;
-            lineRenderer.useWorldSpace = true;
-            lineRenderer.numCapVertices = 5;
-            lineRenderer.numCornerVertices = 15;
-
-            Vector3[] corners = new Vector3[8];
-            corners[0] = new Vector3(min.x, min.y, min.z);
-            corners[1] = new Vector3(max.x, min.y, min.z);
-            corners[2] = new Vector3(max.x, min.y, max.z);
-            corners[3] = new Vector3(min.x, min.y, max.z);
-
-            corners[4] = new Vector3(min.x, max.y, min.z);
-            corners[5] = new Vector3(max.x, max.y, min.z);
-            corners[6] = new Vector3(max.x, max.y, max.z);
-            corners[7] = new Vector3(min.x, max.y, max.z);
-
-            Vector3[] lines = {
-                corners[0], corners[1],
-                corners[1], corners[2],
-                corners[2], corners[3],
-                corners[3], corners[0],
-
-                corners[0], corners[4],
-                corners[1], corners[5],
-                corners[2], corners[6],
-                corners[3], corners[7],
-
-                corners[4], corners[5],
-                corners[5], corners[6],
-                corners[6], corners[7],
-                corners[7], corners[4]
-            };
-
-            lineRenderer.positionCount = lines.Length;
-            lineRenderer.SetPositions(lines);
+            GL.End();
         }
 
         public Vector3 GetTerrainCenter()
@@ -187,25 +179,6 @@ namespace Project._Scripts.Terrain
                 }
             }
         }
-        
-        public IEnumerator GenerateChunksCoroutine()
-        {
-            int chunksX = Mathf.CeilToInt((float)Width / ChunkSize);
-            int chunksZ = Mathf.CeilToInt((float)Length / ChunkSize);
-
-            for (int cx = 0; cx < chunksX; cx++)
-            {
-                for (int cz = 0; cz < chunksZ; cz++)
-                {
-                    GenerateChunk(cx, cz);
-
-                    // Belirli aralıklarla frame başına çalış
-                    if ((cx * chunksZ + cz) % 2 == 0)
-                        yield return null;
-                }
-            }
-        }
-
         
         private void ApplyMaterial(MeshRenderer renderer)
         {
