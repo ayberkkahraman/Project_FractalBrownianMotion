@@ -2,8 +2,8 @@ Shader "Custom/HeightBasedTerrain"
 {
     Properties
     {
-        _MinHeight ("Min Height", Range(0,20)) = 0
-        _MidHeight ("Mid (Max) Height", Range(10,100)) = 20
+        _MinHeight ("Min Height", Range(0,8)) = 1.75
+        _MidHeight ("Mid (Max) Height", Range(5,15)) = 8
 
         _LowColor ("Low Altitude Color", Color) = (0.4, 0.26, 0.13, 1)
         _LowMidColor ("Low-Mid Altitude Color", Color) = (0.25, 0.35, 0.12, 1)

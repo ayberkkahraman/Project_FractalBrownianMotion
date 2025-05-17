@@ -14,15 +14,15 @@ namespace Project._Scripts.Terrain
         public ICamOwner CamOwner { get; set; }
         
         [Header("Terrain Dimensions")]
-        [Range(5,200)]public int Width = 50;
-        [Range(5,200)]public int Length = 50;
-        [Range(1,50)]public float Height = 10f;
+        [Range(5,25)]public int Width = 25;
+        [Range(5,25)]public int Length = 25;
+        [Range(1,10)]public float Height = 10f;
 
         [Header("Noise Settings")]
         [Range(0.001f,0.5f)]public float Scale = 0.1f;
-        [Range(1,6)]public int Octaves = 4;
-        [Range(0,4)]public float Lacunarity = 2f;
-        [Range(0f,2f)]public float Persistence = 0.5f;
+        [Range(1,5)]public int Octaves = 4;
+        [Range(0,3)]public float Lacunarity = 2f;
+        [Range(0f,1f)]public float Persistence = 0.5f;
 
         [Header("Detail & Chunking")]
         [Range(1, 10)]

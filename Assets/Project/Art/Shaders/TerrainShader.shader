@@ -2,8 +2,8 @@ Shader "Custom/TerrainShader"
 {
     Properties
     {
-        _MinHeight("Min Height", Range(0, 100)) = 0
-        _MaxHeight("Max Height", Range(0, 100)) = 20
+        _MinHeight("Min Height", Range(0, 5)) = 1.75
+        _MaxHeight("Max Height", Range(3, 15)) = 8
         _GradientActive("Gradient Active", Float) = 1
         _GradientIntensity("Gradient Intensity", Range(0.1, 10.0)) = 1.0
 
