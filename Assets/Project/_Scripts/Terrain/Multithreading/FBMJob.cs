@@ -1,4 +1,6 @@
-﻿namespace Project._Scripts.Terrain.Multithreading
+﻿using UnityEngine;
+
+namespace Project._Scripts.Terrain.Multithreading
 {
   using Unity.Burst;
   using Unity.Collections;
@@ -10,6 +12,7 @@
   {
     [WriteOnly] public NativeArray<float> Heights;
 
+    public int Detail;
     public int VertexCount;
     public float HeightMultiplier;
     public float Scale;
@@ -28,8 +31,8 @@
       int x = index % VertexCount;
       int z = index / VertexCount;
 
-      float worldX = (StartX + x) / (Width) * Width;
-      float worldZ = (StartZ + z) / (Length) * Length;
+      float worldX = (StartX + x) / (Width * Detail) * Width;
+      float worldZ = (StartZ + z) / (Length * Detail) * Length;
 
       float y = FBM(worldX * Scale, worldZ * Scale);
       Heights[index] = y * HeightMultiplier;

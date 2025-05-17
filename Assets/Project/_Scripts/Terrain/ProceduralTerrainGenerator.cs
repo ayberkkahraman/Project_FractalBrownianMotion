@@ -1,5 +1,8 @@
 ﻿using System.Buffers;
 using System.Collections;
+using Project._Scripts.Terrain.Multithreading;
+using Unity.Collections;
+using Unity.Jobs;
 
 namespace Project._Scripts.Terrain
 {
@@ -38,6 +41,7 @@ namespace Project._Scripts.Terrain
         private int _initialXPosition;
         private int _initialZPosition;
         private int _vertexCount;
+        private int _totalVertexCount;
         private int _vertArrayLength;
         private int _trisArrayLength;
         private Vector3[] _vertices;
@@ -191,24 +195,46 @@ namespace Project._Scripts.Terrain
             _initialXPosition = chunkX * ChunkSize * Detail;
             _initialZPosition = chunkZ * ChunkSize * Detail;
             _vertexCount = ChunkSize * Detail + 1;
-
-            _vertArrayLength = _vertexCount * _vertexCount;
+            _totalVertexCount = _vertexCount * _vertexCount;
             _trisArrayLength = ChunkSize * Detail * ChunkSize * Detail * 6;
 
-            _vertices = ArrayPool<Vector3>.Shared.Rent(_vertArrayLength);
+            _vertices = ArrayPool<Vector3>.Shared.Rent(_totalVertexCount);
             _triangles = ArrayPool<int>.Shared.Rent(_trisArrayLength);
-
-            for (int z = 0, i = 0; z <= ChunkSize * Detail; z++)
+            
+            var heights = new NativeArray<float>(_totalVertexCount, Allocator.TempJob);
+            
+            var fbmJob = new FBMJob
             {
-                for (int x = 0; x <= ChunkSize * Detail; x++, i++)
+                Heights = heights,
+                VertexCount = _vertexCount,
+                HeightMultiplier = Height,
+                Detail = Detail,
+                Scale = Scale,
+                Octaves = Octaves,
+                Persistence = Persistence,
+                Lacunarity = Lacunarity,
+                StartX = _initialXPosition,
+                StartZ = _initialZPosition,
+                Width = Width * Detail,
+                Length = Length * Detail
+            };
+
+            JobHandle verticesHandle = fbmJob.Schedule(_totalVertexCount, 64); // 64 batch size
+            verticesHandle.Complete();
+
+            for (int z = 0, i = 0; z < _vertexCount; z++)
+            {
+                for (int x = 0; x < _vertexCount; x++, i++)
                 {
                     float worldX = (_initialXPosition + x) / (float)(Width * Detail) * Width;
                     float worldZ = (_initialZPosition + z) / (float)(Length * Detail) * Length;
-                    float y = FractalBrownianMotion(worldX * Scale, worldZ * Scale) * Height;
+                    float y = heights[i];
 
                     _vertices[i] = new Vector3(worldX, y, worldZ);
                 }
             }
+
+            heights.Dispose();
 
             int tris = 0;
             int vert = 0;
@@ -250,49 +276,9 @@ namespace Project._Scripts.Terrain
             MeshRenderer meshRenderer = chunk.AddComponent<MeshRenderer>();
             ApplyMaterial(meshRenderer);
 
-            ArrayPool<Vector3>.Shared.Return(_vertices, clearArray: false);
-            ArrayPool<int>.Shared.Return(_triangles, clearArray: false);
+            ArrayPool<Vector3>.Shared.Return(_vertices, clearArray: true);
+            ArrayPool<int>.Shared.Return(_triangles, clearArray: true);
         }
-        
-        float FractalBrownianMotion(float x, float z)
-        {
-            float total = 0f;
-            float frequency = 1f;
-            float amplitude = 1f;
-            float maxAmplitude = 0f;
-
-            for (int i = 0; i < Octaves; i++)
-            {
-                total += Mathf.PerlinNoise(x * frequency, z * frequency) * amplitude;
-                maxAmplitude += amplitude;
-                amplitude *= Persistence;
-                frequency *= Lacunarity;
-            }
-
-            return total / maxAmplitude;
-        }
-        
-        #if UNITY_EDITOR
-        void OnDrawGizmos()
-        {
-            if (!Application.isPlaying) return;
-
-            foreach (Transform chunk in transform)
-            {
-                MeshFilter filter = chunk.GetComponent<MeshFilter>();
-                if (filter == null || filter.sharedMesh == null) continue;
-
-                Vector3[] verts = filter.sharedMesh.vertices;
-
-                Gizmos.color = Color.black;
-                foreach (var v in verts)
-                {
-                    Gizmos.DrawSphere(chunk.transform.position + v, 0.05f);
-                }
-            }
-        }
-        #endif
-        
     }
 
     

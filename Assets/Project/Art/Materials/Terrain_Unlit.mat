@@ -32,8 +32,8 @@ Material:
     m_Floats:
     - _GradientIntensity: 0.5
     - _MaxHeight: 20
-    - _MidHeight: 8
-    - _MinHeight: 3.75
+    - _MidHeight: 7
+    - _MinHeight: 0
     - _UseGradient: 1
     m_Colors:
     - _Color1: {r: 0.39999998, g: 0.25999996, b: 0.12999997, a: 1}

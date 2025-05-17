@@ -914,8 +914,8 @@ MonoBehaviour:
         m_CallState: 2
   MinValue: 1
   MaxValue: 10
-  ValueType: 0
-  debounceDelay: 0.25
+  ValueType: 1
+  debounceDelay: 0
 --- !u!1 &168510936
 GameObject:
   m_ObjectHideFlags: 0
@@ -3543,9 +3543,9 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   MinValue: 1
-  MaxValue: 10
+  MaxValue: 8
   ValueType: 0
-  debounceDelay: 0.25
+  debounceDelay: 0
 --- !u!1 &1151663897
 GameObject:
   m_ObjectHideFlags: 0
@@ -5478,7 +5478,7 @@ MonoBehaviour:
   MinValue: 1
   MaxValue: 25
   ValueType: 0
-  debounceDelay: 0.25
+  debounceDelay: 0
 --- !u!1 &1691764184
 GameObject:
   m_ObjectHideFlags: 0
@@ -6447,7 +6447,7 @@ MonoBehaviour:
   MinValue: 1
   MaxValue: 25
   ValueType: 0
-  debounceDelay: 0.25
+  debounceDelay: 0
 --- !u!1 &1843589430
 GameObject:
   m_ObjectHideFlags: 0
@@ -7066,10 +7066,10 @@ MonoBehaviour:
   Height: 6
   Scale: 0.1
   Octaves: 3
-  Lacunarity: 2.5
+  Lacunarity: 2
   Persistence: 0.5
   Detail: 4
-  ChunkSize: 5
+  ChunkSize: 1
   TerrainMaterial: {fileID: 2100000, guid: 0509dde697ca57249a5445cffed83c3c, type: 2}
   BoundaryMaterial: {fileID: 2100000, guid: 2c464a4ce0094b54097ef6ac209facf8, type: 2}
 --- !u!23 &2056475770
