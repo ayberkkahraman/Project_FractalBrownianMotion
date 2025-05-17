@@ -98,6 +98,11 @@ namespace Project._Scripts.Terrain
             _boundaryVerts[7] = new Vector3(min.x, max.y, max.z);
         }
 
+        public void DropTest(int t)
+        {
+            Debug.Log(t);
+        }
+
 
         public void UpdateSize()
         {

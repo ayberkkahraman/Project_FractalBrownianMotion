@@ -40,6 +40,11 @@ public class Setting : MonoBehaviour
     _slider.onValueChanged.AddListener(delegate { SetSlider();});
   }
 
+  private void OnDestroy()
+  {
+    _slider.onValueChanged.RemoveListener(delegate { SetSlider();});
+  }
+
   void Update()
   {
     if (pendingUpdate)

@@ -3,7 +3,7 @@ Shader "Custom/HeightBasedTerrain"
     Properties
     {
         _MinHeight ("Min Height", Range(0,8)) = 1.75
-        _MidHeight ("Mid (Max) Height", Range(5,15)) = 8
+        _MaxHeight ("Max Height", Range(5,15)) = 8
 
         _LowColor ("Low Altitude Color", Color) = (0.4, 0.26, 0.13, 1)
         _LowMidColor ("Low-Mid Altitude Color", Color) = (0.25, 0.35, 0.12, 1)
@@ -29,7 +29,7 @@ Shader "Custom/HeightBasedTerrain"
             #include "UnityCG.cginc"
 
             float _MinHeight;
-            float _MidHeight;
+            float _MaxHeight;
 
             fixed4 _LowColor;
             fixed4 _LowMidColor;
@@ -65,14 +65,14 @@ Shader "Custom/HeightBasedTerrain"
                 float h = i.height;
 
                 // Height değerini [MinHeight, MidHeight] aralığında kısıtla
-                h = clamp(h, _MinHeight, _MidHeight);
+                h = clamp(h, _MinHeight, _MaxHeight);
 
                 fixed3 baseColor;
 
                 if (_UseGradient < 0.5)
                 {
                     // Gradient kapalı: katmanlar arası keskin geçişler
-                    float range = _MidHeight - _MinHeight;
+                    float range = _MaxHeight - _MinHeight;
                     float normalizedHeight = (h - _MinHeight) / range;
 
                     if (normalizedHeight < 0.2) baseColor = _LowColor.rgb;
@@ -84,7 +84,7 @@ Shader "Custom/HeightBasedTerrain"
                 else
                 {
                     // Gradient açık: katmanlar arası yumuşak geçişler
-                    float range = _MidHeight - _MinHeight;
+                    float range = _MaxHeight - _MinHeight;
                     float t = saturate((h - _MinHeight) / range);
 
                     fixed3 colorLowMid;

@@ -29,6 +29,13 @@ namespace Project._Scripts.Global.Manager.Managers
     private float debounceTimer = 0f;
     private bool pendingUpdate = false;
 
+    public Dropdown Dropdown;
+
+    public void TestD()
+    {
+      Debug.Log(Dropdown.value);
+    }
+
     void Update()
     {
       if (pendingUpdate)
