@@ -1,5 +1,5 @@
 ﻿using System.Buffers;
-using System.Collections;
+using System.Collections.Generic;
 using Project._Scripts.Terrain.Multithreading;
 using Unity.Collections;
 using Unity.Jobs;
@@ -34,9 +34,9 @@ namespace Project._Scripts.Terrain
         public Material TerrainMaterial;
         public Material BoundaryMaterial;
 
-        public bool DrawTerrainBoundary { get; set; }
+        private Vector3 _minPos;
+        private Vector3 _maxPos;
         private Vector3 _camTarget;
-        private Vector3 _previousCenter;
         private Vector3 _center;
         private int _initialXPosition;
         private int _initialZPosition;
@@ -47,15 +47,16 @@ namespace Project._Scripts.Terrain
         private Vector3[] _vertices;
         private Vector3[] _boundaryVerts = new Vector3[8];
         private int[] _triangles;
+        private List<Transform> _chunks;
 
         private void Awake()
         {
+            _chunks = new List<Transform>();
             CamOwner = this;
         }
         void Start()
         {
             _center = GetTerrainCenter();
-            _previousCenter = _center;
             
             GenerateTerrain();
             UpdateSize();
@@ -66,47 +67,28 @@ namespace Project._Scripts.Terrain
         {
             DrawTerrainWireBox();
         }
-
+        
         public void DrawBoundary()
         {
             BoundaryMaterial.SetPass(0);
+
+            _minPos = Vector3.zero;
+            _minPos.y = -Height;
+            _maxPos = new Vector3(Width, Height, Length);
             
-            Vector3 min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
-            Vector3 max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
-
-            foreach (Transform chunk in transform)
-            {
-                MeshFilter filter = chunk.GetComponent<MeshFilter>();
-                if (filter == null || filter.sharedMesh == null) continue;
-
-                foreach (Vector3 v in filter.sharedMesh.vertices)
-                {
-                    Vector3 worldV = chunk.TransformPoint(v);
-                    min = Vector3.Min(min, worldV);
-                    max = Vector3.Max(max, worldV);
-                }
-            }
-
-            
-            _boundaryVerts[0] = new Vector3(min.x, min.y, min.z);
-            _boundaryVerts[1] = new Vector3(max.x, min.y, min.z);
-            _boundaryVerts[2] = new Vector3(max.x, min.y, max.z);
-            _boundaryVerts[3] = new Vector3(min.x, min.y, max.z);
-            _boundaryVerts[4] = new Vector3(min.x, max.y, min.z);
-            _boundaryVerts[5] = new Vector3(max.x, max.y, min.z);
-            _boundaryVerts[6] = new Vector3(max.x, max.y, max.z);
-            _boundaryVerts[7] = new Vector3(min.x, max.y, max.z);
-        }
-
-        public void DropTest(int t)
-        {
-            Debug.Log(t);
+            _boundaryVerts[0] = new Vector3(_minPos.x, _minPos.y, _minPos.z);
+            _boundaryVerts[1] = new Vector3(_maxPos.x, _minPos.y, _minPos.z);
+            _boundaryVerts[2] = new Vector3(_maxPos.x, _minPos.y, _maxPos.z);
+            _boundaryVerts[3] = new Vector3(_minPos.x, _minPos.y, _maxPos.z);
+            _boundaryVerts[4] = new Vector3(_minPos.x, _maxPos.y, _minPos.z);
+            _boundaryVerts[5] = new Vector3(_maxPos.x, _maxPos.y, _minPos.z);
+            _boundaryVerts[6] = new Vector3(_maxPos.x, _maxPos.y, _maxPos.z);
+            _boundaryVerts[7] = new Vector3(_minPos.x, _maxPos.y, _maxPos.z);
         }
 
 
         public void UpdateSize()
         {
-            _previousCenter = _center;
             CamOwner.UpdateCam(_center);
             CamOwner.CameraManager.UpdateDistance(((Width+Length)/2) + 15f);
             DrawBoundary();
@@ -123,6 +105,7 @@ namespace Project._Scripts.Terrain
             {
                 Destroy(child.gameObject);
             }
+            _chunks.Clear();
         }
 
         public void RegenerateTerrain()
@@ -138,12 +121,9 @@ namespace Project._Scripts.Terrain
             BoundaryMaterial.SetPass(0);
             GL.Begin(GL.LINES);
             GL.Color(Color.red);
-            
-            // Alt
+
             Draw(_boundaryVerts[0], _boundaryVerts[1]); Draw(_boundaryVerts[1], _boundaryVerts[2]); Draw(_boundaryVerts[2], _boundaryVerts[3]); Draw(_boundaryVerts[3], _boundaryVerts[0]);
-            // Üst
             Draw(_boundaryVerts[4], _boundaryVerts[5]); Draw(_boundaryVerts[5], _boundaryVerts[6]); Draw(_boundaryVerts[6], _boundaryVerts[7]); Draw(_boundaryVerts[7], _boundaryVerts[4]);
-            // Dikey
             Draw(_boundaryVerts[0], _boundaryVerts[4]); Draw(_boundaryVerts[1], _boundaryVerts[5]); Draw(_boundaryVerts[2], _boundaryVerts[6]); Draw(_boundaryVerts[3], _boundaryVerts[7]);
 
             GL.End();
@@ -151,29 +131,22 @@ namespace Project._Scripts.Terrain
 
         public Vector3 GetTerrainCenter()
         {
-            Vector3 min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
-            Vector3 max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
+            _minPos = Vector3.zero;
+            _minPos.y = -Height;
+            _maxPos = new Vector3(Width, Height, Length);
+            
+            var centerPos = (_minPos + _maxPos) * 0.5f;
 
-            foreach (Transform chunk in transform)
-            {
-                MeshFilter filter = chunk.GetComponent<MeshFilter>();
-                if (filter == null || filter.sharedMesh == null) continue;
-
-                Vector3[] verts = filter.sharedMesh.vertices;
-                foreach (var v in verts)
-                {
-                    Vector3 worldV = chunk.transform.TransformPoint(v);
-                    min = Vector3.Min(min, worldV);
-                    max = Vector3.Max(max, worldV);
-                }
-            }
-
-            return (min + max) * 0.5f;
+            return centerPos;
         }
 
-
+        private Bounds _combinedBounds;
+        
+        //----------MARKED
         public void GenerateChunks()
         {
+            _combinedBounds = new Bounds();
+            
             int chunksX = Mathf.CeilToInt((float)Width / ChunkSize);
             int chunksZ = Mathf.CeilToInt((float)Length / ChunkSize);
 
@@ -181,21 +154,23 @@ namespace Project._Scripts.Terrain
             {
                 for (int cz = 0; cz < chunksZ; cz++)
                 {
-                    GenerateChunk(cx, cz);
+                    var chunk = GenerateChunk(cx, cz);
+                    _combinedBounds.Encapsulate(chunk.GetComponent<MeshFilter>().sharedMesh.bounds);
+                    // GenerateChunk(cx, cz);
                 }
             }
 
-            _center = GetTerrainCenter();
+            _center = _combinedBounds.center;
         }
         
-        private void ApplyMaterial(MeshRenderer renderer)
+        private void ApplyMaterial(MeshRenderer meshRenderer)
         {
-            renderer.sharedMaterial = TerrainMaterial;
+            meshRenderer.sharedMaterial = TerrainMaterial;
         }
 
 
-
-        void GenerateChunk(int chunkX, int chunkZ)
+        //----------MARKED
+        GameObject GenerateChunk(int chunkX, int chunkZ)
         {
             _initialXPosition = chunkX * ChunkSize * Detail;
             _initialZPosition = chunkZ * ChunkSize * Detail;
@@ -267,6 +242,8 @@ namespace Project._Scripts.Terrain
                     parent = transform
                 }
             };
+            
+            _chunks.Add(chunk.transform);
 
             Mesh mesh = new Mesh
             {
@@ -283,6 +260,8 @@ namespace Project._Scripts.Terrain
 
             ArrayPool<Vector3>.Shared.Return(_vertices, clearArray: true);
             ArrayPool<int>.Shared.Return(_triangles, clearArray: true);
+
+            return chunk;
         }
     }
 
