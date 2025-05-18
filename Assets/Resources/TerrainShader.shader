@@ -16,8 +16,8 @@ Shader "Custom/TerrainShader"
 
     SubShader
     {
-        Tags { "RenderType"="Opaque" "RenderPipeline" = "UniversalRenderPipeline" }
-        LOD 200
+        Tags { "RenderType"="Opaque" }
+        LOD 100
 
         Pass
         {
