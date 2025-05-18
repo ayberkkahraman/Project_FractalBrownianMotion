@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Project._Scripts.Terrain.Multithreading;
 using Unity.Collections;
 using Unity.Jobs;
+using UnityEngine.Rendering;
 
 namespace Project._Scripts.Terrain
 {
@@ -145,8 +146,6 @@ namespace Project._Scripts.Terrain
         //----------MARKED
         public void GenerateChunks()
         {
-            _combinedBounds = new Bounds();
-            
             int chunksX = Mathf.CeilToInt((float)Width / ChunkSize);
             int chunksZ = Mathf.CeilToInt((float)Length / ChunkSize);
 
@@ -154,13 +153,11 @@ namespace Project._Scripts.Terrain
             {
                 for (int cz = 0; cz < chunksZ; cz++)
                 {
-                    var chunk = GenerateChunk(cx, cz);
-                    _combinedBounds.Encapsulate(chunk.GetComponent<MeshFilter>().sharedMesh.bounds);
-                    // GenerateChunk(cx, cz);
+                    GenerateChunk(cx, cz);
                 }
             }
 
-            _center = _combinedBounds.center;
+            _center = GetTerrainCenter();
         }
         
         private void ApplyMaterial(MeshRenderer meshRenderer)
@@ -178,14 +175,14 @@ namespace Project._Scripts.Terrain
             _totalVertexCount = _vertexCount * _vertexCount;
             _trisArrayLength = ChunkSize * Detail * ChunkSize * Detail * 6;
 
-            _vertices = ArrayPool<Vector3>.Shared.Rent(_totalVertexCount);
-            _triangles = ArrayPool<int>.Shared.Rent(_trisArrayLength);
-            
-            var heights = new NativeArray<float>(_totalVertexCount, Allocator.TempJob);
-            
+            // NativeArray'ler ile GC-free bellek
+            var vertices = new NativeArray<Vector3>(_totalVertexCount, Allocator.TempJob);
+            var triangles = new NativeArray<int>(_trisArrayLength, Allocator.TempJob);
+
+            // FBMJob (yükseklik)
             var fbmJob = new FBMJob
             {
-                Heights = heights,
+                Vertices = vertices,
                 VertexCount = _vertexCount,
                 HeightMultiplier = Height,
                 Detail = Detail,
@@ -199,58 +196,49 @@ namespace Project._Scripts.Terrain
                 Length = Length * Detail
             };
 
-            JobHandle verticesHandle = fbmJob.Schedule(_totalVertexCount, 64); // 64 batch size
-            verticesHandle.Complete();
-
-            for (int z = 0, i = 0; z < _vertexCount; z++)
+            // TriangleJob (üçgenler)
+            var triangleJob = new TriangleGenerationJob
             {
-                for (int x = 0; x < _vertexCount; x++, i++)
-                {
-                    float worldX = (_initialXPosition + x) / (float)(Width * Detail) * Width;
-                    float worldZ = (_initialZPosition + z) / (float)(Length * Detail) * Length;
-                    float y = heights[i];
+                Triangles = triangles,
+                VertexCount = _vertexCount,
+                ChunkSize = ChunkSize,
+                Detail = Detail
+            };
 
-                    _vertices[i] = new Vector3(worldX, y, worldZ);
-                }
-            }
+            JobHandle fbmHandle = fbmJob.Schedule(_totalVertexCount, 64);
+            JobHandle triangleHandle = triangleJob.Schedule(fbmHandle);
+            triangleHandle.Complete();
 
-            heights.Dispose();
+            // === GC-FREE MESH VERİSİ YAZIMI ===
+            Mesh mesh = new Mesh();
+            var meshDataArray = Mesh.AllocateWritableMeshData(mesh);
+            var meshData = meshDataArray[0];
 
-            int tris = 0;
-            int vert = 0;
-            for (int z = 0; z < ChunkSize * Detail; z++)
-            {
-                for (int x = 0; x < ChunkSize * Detail; x++)
-                {
-                    _triangles[tris + 0] = vert + 0;
-                    _triangles[tris + 1] = vert + _vertexCount;
-                    _triangles[tris + 2] = vert + 1;
-                    _triangles[tris + 3] = vert + 1;
-                    _triangles[tris + 4] = vert + _vertexCount;
-                    _triangles[tris + 5] = vert + _vertexCount + 1;
+            // Vertex buffer
+            meshData.SetVertexBufferParams(_totalVertexCount,
+                new VertexAttributeDescriptor(VertexAttribute.Position));
 
-                    vert++;
-                    tris += 6;
-                }
-                vert++;
-            }
+            var vertexBuffer = meshData.GetVertexData<Vector3>();
+            vertexBuffer.CopyFrom(vertices);
 
+            // Index buffer
+            meshData.SetIndexBufferParams(_trisArrayLength, IndexFormat.UInt32);
+            var indexBuffer = meshData.GetIndexData<int>();
+            indexBuffer.CopyFrom(triangles);
+
+            // Submesh
+            meshData.subMeshCount = 1;
+            meshData.SetSubMesh(0, new SubMeshDescriptor(0, _trisArrayLength));
+
+            // Apply GC-free mesh data
+            Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, mesh);
+            mesh.RecalculateNormals();
+
+            // === CHUNK NESNESİ OLUŞTURULUYOR ===
             GameObject chunk = new GameObject($"Chunk_{chunkX}_{chunkZ}")
             {
-                transform =
-                {
-                    parent = transform
-                }
+                transform = { parent = transform }
             };
-            
-            _chunks.Add(chunk.transform);
-
-            Mesh mesh = new Mesh
-            {
-                vertices = _vertices[..(_vertexCount * _vertexCount)],
-                triangles = _triangles[..tris]
-            };
-            mesh.RecalculateNormals();
 
             MeshFilter filter = chunk.AddComponent<MeshFilter>();
             filter.mesh = mesh;
@@ -258,8 +246,11 @@ namespace Project._Scripts.Terrain
             MeshRenderer meshRenderer = chunk.AddComponent<MeshRenderer>();
             ApplyMaterial(meshRenderer);
 
-            ArrayPool<Vector3>.Shared.Return(_vertices, clearArray: true);
-            ArrayPool<int>.Shared.Return(_triangles, clearArray: true);
+            _chunks.Add(chunk.transform);
+
+            // NativeArray bellek temizliği
+            vertices.Dispose();
+            triangles.Dispose();
 
             return chunk;
         }

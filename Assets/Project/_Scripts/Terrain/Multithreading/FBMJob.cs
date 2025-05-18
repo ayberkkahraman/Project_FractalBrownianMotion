@@ -10,17 +10,15 @@ namespace Project._Scripts.Terrain.Multithreading
   [BurstCompile]
   public struct FBMJob : IJobParallelFor
   {
-    [WriteOnly] public NativeArray<float> Heights;
+    [WriteOnly] public NativeArray<Vector3> Vertices;
 
-    public int Detail;
     public int VertexCount;
     public float HeightMultiplier;
+    public int Detail;
     public float Scale;
-
     public int Octaves;
     public float Persistence;
     public float Lacunarity;
-
     public float StartX;
     public float StartZ;
     public float Width;
@@ -33,9 +31,9 @@ namespace Project._Scripts.Terrain.Multithreading
 
       float worldX = (StartX + x) / (Width * Detail) * Width;
       float worldZ = (StartZ + z) / (Length * Detail) * Length;
+      float worldY = FBM(worldX, worldZ) * HeightMultiplier; // <-- DÜZENLENDİ
 
-      float y = FBM(worldX * Scale, worldZ * Scale);
-      Heights[index] = y * HeightMultiplier;
+      Vertices[index] = new Vector3(worldX, worldY, worldZ);
     }
 
     float FBM(float x, float z)
@@ -47,7 +45,10 @@ namespace Project._Scripts.Terrain.Multithreading
 
       for (int i = 0; i < Octaves; i++)
       {
-        total += noise.snoise(new float2(x * frequency, z * frequency)) * amplitude;
+        float sampleX = x * Scale * frequency;        // <-- DÜZENLENDİ
+        float sampleZ = z * Scale * frequency;        // <-- DÜZENLENDİ
+
+        total += noise.snoise(new float2(sampleX, sampleZ)) * amplitude;
         maxAmplitude += amplitude;
         amplitude *= Persistence;
         frequency *= Lacunarity;
@@ -55,6 +56,7 @@ namespace Project._Scripts.Terrain.Multithreading
 
       return total / maxAmplitude;
     }
+
   }
 
 }
