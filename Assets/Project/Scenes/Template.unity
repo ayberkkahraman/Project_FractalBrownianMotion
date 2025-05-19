@@ -10036,7 +10036,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
   MinValue: 5
-  MaxValue: 50
+  MaxValue: 25
   ValueType: 0
   debounceDelay: 0
 --- !u!1 &1675859742
@@ -11914,7 +11914,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
   MinValue: 5
-  MaxValue: 50
+  MaxValue: 25
   ValueType: 0
   debounceDelay: 0
 --- !u!1 &1843589430
@@ -12375,6 +12375,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1950671776}
   m_CullTransparentMesh: 1
+--- !u!1 &1978767639
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1978767640}
+  m_Layer: 0
+  m_Name: Chunks
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1978767640
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1978767639}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 31.212122, y: 2.5049782, z: 26.43183}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1979128803
 GameObject:
   m_ObjectHideFlags: 0
@@ -12630,7 +12661,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.7735849, g: 0.7735849, b: 0.7735849, a: 0}
+  m_BackGroundColor: {r: 0.38679248, g: 0.3329213, b: 0.29739234, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -13997,3 +14028,4 @@ SceneRoots:
   - {fileID: 122975226}
   - {fileID: 1336106713}
   - {fileID: 1843589433}
+  - {fileID: 1978767640}
