@@ -50,9 +50,11 @@ namespace Project._Scripts.Terrain
         private int[] _triangles;
         private NativeArray<Vector3> _verticesArray;
         private NativeArray<int> _trianglesArray;
+        private bool _drawBoundary;
 
         private void Awake()
         {
+            _drawBoundary = true;
             CamOwner = this;
         }
         void Start()
@@ -63,14 +65,23 @@ namespace Project._Scripts.Terrain
             UpdateSize();
             
         }
+
+        public void SetBoundary(bool value)
+        {
+            _drawBoundary = value;
+        }
         
         void OnRenderObject()
         {
+            if(!_drawBoundary) return;
+            
             DrawTerrainWireBox();
         }
         
         public void DrawBoundary()
         {
+            if(!_drawBoundary) return;
+            
             BoundaryMaterial.SetPass(0);
 
             _minPos = Vector3.zero;
@@ -253,9 +264,6 @@ namespace Project._Scripts.Terrain
 
             MeshRenderer meshRenderer = chunk.AddComponent<MeshRenderer>();
             ApplyMaterial(meshRenderer);
-            
-            ArrayPool<Vector3>.Shared.Return(_vertices, clearArray: true);
-            ArrayPool<int>.Shared.Return(_triangles, clearArray: true);
 
             // NativeArray bellek temizliği
             _verticesArray.Dispose();

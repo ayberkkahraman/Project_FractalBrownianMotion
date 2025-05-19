@@ -36,6 +36,11 @@ namespace Project._Scripts.Global.Manager.Managers
       Debug.Log(Dropdown.value);
     }
 
+    private void Awake()
+    {
+      Cursor.visible = false;
+    }
+
     void Update()
     {
       if (pendingUpdate)
