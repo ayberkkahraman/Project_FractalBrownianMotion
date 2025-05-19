@@ -20,6 +20,7 @@ namespace Project._Scripts.Library.UI
     public void SetBoundary()
     {
       _proceduralTerrainGenerator.SetBoundary(_toggle.isOn);
+      if(_toggle.isOn)_proceduralTerrainGenerator.RegenerateTerrain();
     }
   }
 }

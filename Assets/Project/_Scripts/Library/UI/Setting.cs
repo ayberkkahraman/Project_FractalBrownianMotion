@@ -18,6 +18,7 @@ public class Setting : MonoBehaviour
   private TMP_Text _headerText;
   public float MinValue;
   public float MaxValue;
+  public float Multiplier = 1f;
   
   public enum Type{Integer, Float}
   public Type ValueType;
@@ -66,15 +67,15 @@ public class Setting : MonoBehaviour
     {
       case Type.Integer:
         sliderValue = Mathf.Clamp(Mathf.CeilToInt(_slider.value * MaxValue), MinValue, MaxValue);
-        _valueText.text = $"{sliderValue}";
+        _valueText.text = $"{sliderValue * Multiplier}";
         break;
       case Type.Float:
         sliderValue = Mathf.Clamp(_slider.value * MaxValue, MinValue, MaxValue);
-        _valueText.text = $"{sliderValue:F2}";
+        _valueText.text = $"{(sliderValue*Multiplier):F2}";
         break;
     }
     
-    SetTerrainVariable(gameObject.name, sliderValue);
+    SetTerrainVariable(gameObject.name, sliderValue * Multiplier);
 
     debounceTimer = debounceDelay;
     pendingUpdate = true;
@@ -122,7 +123,7 @@ public class Setting : MonoBehaviour
             break;
         }
 
-        _slider.value = sliderValue / (MaxValue - MinValue);
+        _slider.value = sliderValue / ((MaxValue - MinValue) * Multiplier);
       }
       catch (Exception e)
       {
