@@ -7,16 +7,19 @@ namespace Project._Scripts.Library.UI
 {
   public class DropdownSetting : MonoBehaviour
   {
+    #region Components
     private ProceduralTerrainGenerator _terrainGenerator;
     private TMP_Dropdown _dropdown;
+    #endregion
 
+    #region Fields
     public Material LitMaterial;
     public Material UnlitMaterial;
 
     public GameObject LitTab;
     public GameObject UnlitTab;
-    
     public Material CurrentMaterial { get; set; }
+    #endregion
 
     private void Awake()
     {

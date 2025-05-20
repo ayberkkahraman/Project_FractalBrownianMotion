@@ -1,5 +1,4 @@
-﻿using System.Buffers;
-using System.Collections.Generic;
+﻿using UnityEngine;
 using Project._Scripts.Terrain.Multithreading;
 using Unity.Collections;
 using Unity.Jobs;
@@ -7,7 +6,6 @@ using UnityEngine.Rendering;
 
 namespace Project._Scripts.Terrain
 {
-    using UnityEngine;
     /// <summary>
     /// Generates a terrain composed of multiple chunks using fBm.
     /// Each chunk is an independent mesh to optimize rendering performance.
@@ -15,8 +13,11 @@ namespace Project._Scripts.Terrain
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
     public class ProceduralTerrainGenerator : MonoBehaviour, ICamOwner
     {
+        #region Components
         public ICamOwner CamOwner { get; set; }
-        
+        #endregion
+
+        #region Fields
         [Header("Terrain Dimensions")]
         [Range(5,25)]public int Width = 25;
         [Range(5,25)]public int Length = 25;
@@ -32,6 +33,8 @@ namespace Project._Scripts.Terrain
         [Range(1, 10)]
         public int Detail = 1;
         [Range(1,20)]public int ChunkSize = 10;
+        
+        [Header("Materials")]
         public Material TerrainMaterial;
         public Material BoundaryMaterial;
 
@@ -46,31 +49,99 @@ namespace Project._Scripts.Terrain
         private int _vertArrayLength;
         private int _trisArrayLength;
         private Vector3[] _vertices;
-        private Vector3[] _boundaryVerts = new Vector3[8];
+        private readonly Vector3[] _boundaryVerts = new Vector3[8];
         private int[] _triangles;
         private NativeArray<Vector3> _verticesArray;
         private NativeArray<int> _trianglesArray;
         private bool _drawBoundary;
+        #endregion
 
+        #region Unity Functions
         private void Awake()
         {
             _drawBoundary = true;
             CamOwner = this;
         }
+        
         void Start()
         {
             _center = GetTerrainCenter();
             
             GenerateTerrain();
             UpdateSize();
-            
         }
+        #endregion
 
-        public void SetBoundary(bool value)
+        #region Terrain Operations
+        //----------------------------------------------------------------------
+        //--------------------------TERRAIN OPERATIONS--------------------------
+        //----------------------------------------------------------------------
+        /// <summary>
+        /// Initial Generation Section of the Terrain
+        /// </summary>
+        public void GenerateTerrain() => GenerateChunks();
+        
+        /// <summary>
+        /// Sets the boundary
+        /// </summary>
+        /// <param name="value"></param>
+        public void SetBoundary(bool value) => _drawBoundary = value;
+        
+        /// <summary>
+        /// Destroys the last terrain for the new creation
+        /// </summary>
+        void ClearTerrain()
         {
-            _drawBoundary = value;
+            foreach (Transform child in transform)
+            {
+                Destroy(child.gameObject);
+            }
         }
         
+        /// <summary>
+        /// Updates the terrain size based on "Height" & "Width"
+        /// </summary>
+        public void UpdateSize()
+        {
+            CamOwner.UpdateCam(_center);
+            CamOwner.CameraManager.UpdateDistance(((Width+Length)/2) + 15f);
+            DrawBoundary();
+        }
+        
+        /// <summary>
+        /// Regeneration of the terrain when the specs have changed
+        /// </summary>
+        public void RegenerateTerrain()
+        {
+            ClearTerrain();
+            GenerateTerrain();
+        }
+
+        /// <summary>
+        /// Gets the center position of the terrain
+        /// </summary>
+        /// <returns></returns>
+        public Vector3 GetTerrainCenter()
+        {
+            _minPos = Vector3.zero;
+            _minPos.y = -Height;
+            _maxPos = new Vector3(Width, Height, Length);
+            
+            var centerPos = (_minPos + _maxPos) * 0.5f;
+
+            return centerPos;
+        }
+        //----------------------------------------------------------------------
+        #endregion
+
+        #region OpenGL Operations
+        //------------------------------------------------------------------------
+        //----------------------DRAWING BOUNDARY WITH OPENGL----------------------
+        //------------------------------------------------------------------------
+        
+        /// <summary>
+        /// Built-in Unity function to draw over graphics
+        /// </summary>
         void OnRenderObject()
         {
             if(!_drawBoundary) return;
@@ -78,6 +149,16 @@ namespace Project._Scripts.Terrain
             DrawTerrainWireBox();
         }
         
+        /// <summary>
+        /// Draws the lines
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        void Draw(Vector3 a, Vector3 b) { GL.Vertex(a); GL.Vertex(b); }
+        
+        /// <summary>
+        /// Draws the boundary for the correct signal
+        /// </summary>
         public void DrawBoundary()
         {
             if(!_drawBoundary) return;
@@ -97,36 +178,10 @@ namespace Project._Scripts.Terrain
             _boundaryVerts[6] = new Vector3(_maxPos.x, _maxPos.y, _maxPos.z);
             _boundaryVerts[7] = new Vector3(_minPos.x, _maxPos.y, _maxPos.z);
         }
-
-
-        public void UpdateSize()
-        {
-            CamOwner.UpdateCam(_center);
-            CamOwner.CameraManager.UpdateDistance(((Width+Length)/2) + 15f);
-            DrawBoundary();
-        }
-
-        public void GenerateTerrain()
-        {
-            GenerateChunks();
-        }
-
-        void ClearTerrain()
-        {
-            foreach (Transform child in transform)
-            {
-                Destroy(child.gameObject);
-            }
-        }
-
-        public void RegenerateTerrain()
-        {
-            ClearTerrain();
-            GenerateTerrain();
-        }
         
-        void Draw(Vector3 a, Vector3 b) { GL.Vertex(a); GL.Vertex(b); }
-        
+        /// <summary>
+        /// Draws the 3D space wire box as a boundary
+        /// </summary>
         public void DrawTerrainWireBox()
         {
             BoundaryMaterial.SetPass(0);
@@ -139,21 +194,16 @@ namespace Project._Scripts.Terrain
 
             GL.End();
         }
-
-        public Vector3 GetTerrainCenter()
-        {
-            _minPos = Vector3.zero;
-            _minPos.y = -Height;
-            _maxPos = new Vector3(Width, Height, Length);
-            
-            var centerPos = (_minPos + _maxPos) * 0.5f;
-
-            return centerPos;
-        }
-
-        private Bounds _combinedBounds;
+        //------------------------------------------------------------------------
+        #endregion
         
-        //----------MARKED
+        #region Terrain Generation
+        //----------------------------------------------------------------------------
+        //-----------------------------TERRAIN GENERATION-----------------------------
+        //----------------------------------------------------------------------------
+        /// <summary>
+        /// Generation of the seperated chunks for the terrain
+        /// </summary>
         public void GenerateChunks()
         {
             int chunksX = Mathf.CeilToInt((float)Width / ChunkSize);
@@ -171,13 +221,18 @@ namespace Project._Scripts.Terrain
             _center = GetTerrainCenter();
         }
         
-        private void ApplyMaterial(MeshRenderer meshRenderer)
-        {
-            meshRenderer.sharedMaterial = TerrainMaterial;
-        }
+        /// <summary>
+        /// Applies the visual rendering effects based on the vertex height
+        /// </summary>
+        /// <param name="meshRenderer"></param>
+        private void ApplyMaterial(MeshRenderer meshRenderer) => meshRenderer.sharedMaterial = TerrainMaterial;
 
 
-        //----------MARKED
+        /// <summary>
+        /// Chunk Generation for the Terrain. -> The Key of the generation
+        /// </summary>
+        /// <param name="chunkX"></param>
+        /// <param name="chunkZ"></param>
         void GenerateChunk(int chunkX, int chunkZ)
         {
             _initialXPosition = chunkX * ChunkSize * Detail;
@@ -186,11 +241,11 @@ namespace Project._Scripts.Terrain
             _totalVertexCount = _vertexCount * _vertexCount;
             _trisArrayLength = ChunkSize * Detail * ChunkSize * Detail * 6;
 
-            // NativeArray'ler ile GC-free bellek
+            //------------------ Preventing GC(Garbage Collection) with the NativeArray collection
             _verticesArray = new NativeArray<Vector3>(_totalVertexCount, Allocator.TempJob);
             _trianglesArray = new NativeArray<int>(_trisArrayLength, Allocator.TempJob);
 
-            // FBMJob (yükseklik)
+            //------------------ fBm equation with seperated jobs
             var fbmJob = new FBMJob
             {
                 Vertices = _verticesArray,
@@ -210,7 +265,7 @@ namespace Project._Scripts.Terrain
             JobHandle fbmHandle = fbmJob.Schedule(_totalVertexCount, 64);
             
 
-            // TriangleJob (üçgenler)
+            //------------------ Triangle Generation of the polygon with seperated jobs
             var triangleJob = new TriangleGenerationJob
             {
                 Triangles = _trianglesArray,
@@ -223,37 +278,34 @@ namespace Project._Scripts.Terrain
             JobHandle triangleHandle = triangleJob.Schedule(fbmHandle);
             triangleHandle.Complete();
 
-            // === GC-FREE MESH VERİSİ YAZIMI ===
+            //------------------ The stage of GC(Garbage Collection) free Mesh Generation
             Mesh mesh = new Mesh();
 
             var meshDataArray = Mesh.AllocateWritableMeshData(mesh);
             var meshData = meshDataArray[0];
 
-            // Vertex buffer ayarı
+            //------------------ Vertex Buffer
             meshData.SetVertexBufferParams(_totalVertexCount,
                 new VertexAttributeDescriptor(VertexAttribute.Position));
 
             var vertexBuffer = meshData.GetVertexData<Vector3>();
             vertexBuffer.CopyFrom(_verticesArray);
 
-            // Index buffer ayarı
+            //------------------ Index Buffer
             meshData.SetIndexBufferParams(_trisArrayLength, IndexFormat.UInt32);
             var indexBuffer = meshData.GetIndexData<int>();
             indexBuffer.CopyFrom(_trianglesArray);
 
-            // Submesh ayarı
+            //------------------ Sub-mesh Setting
             meshData.subMeshCount = 1;
             meshData.SetSubMesh(0, new SubMeshDescriptor(0, _trisArrayLength));
 
-            // GC-free mesh verisini uygula ve dispose et
+            //------------------ Application of the mesh data and dispose
             Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, mesh);
-
-            // Normalleri yeniden hesaplama, bu işlem pahalıdır.
-            // Eğer mümkünse normal verisini job veya hesaplamayla önceden oluştur
             mesh.RecalculateNormals();
 
             
-            // === CHUNK NESNESİ OLUŞTURULUYOR ===
+            //------------------ Instantiating of the "Chunk" Object
             GameObject chunk = new GameObject($"Chunk_{chunkX}_{chunkZ}")
             {
                 transform = { parent = transform }
@@ -265,11 +317,12 @@ namespace Project._Scripts.Terrain
             MeshRenderer meshRenderer = chunk.AddComponent<MeshRenderer>();
             ApplyMaterial(meshRenderer);
 
-            // NativeArray bellek temizliği
+            //------------------ The cleaning of the NativeArray sets
             _verticesArray.Dispose();
             _trianglesArray.Dispose();
         }
+        //----------------------------------------------------------------------------
+        #endregion
+        
     }
-
-    
 }

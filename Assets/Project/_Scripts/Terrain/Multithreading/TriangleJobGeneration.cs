@@ -4,6 +4,9 @@ using Unity.Jobs;
 
 namespace Project._Scripts.Terrain.Multithreading
 {
+  /// <summary>
+  /// Triangle Generation with Multithreading
+  /// </summary>
   [BurstCompile]
   public struct TriangleGenerationJob : IJob
   {

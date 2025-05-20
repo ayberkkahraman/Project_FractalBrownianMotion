@@ -1,13 +1,11 @@
-﻿using System;
-using Project._Scripts.Terrain;
+﻿using Project._Scripts.Terrain;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace Project._Scripts.Library.UI
 {
   public class Toggle : MonoBehaviour
   {
-    [SerializeField]private ProceduralTerrainGenerator _proceduralTerrainGenerator;
+    [SerializeField]private ProceduralTerrainGenerator ProceduralTerrainGenerator;
 
     private UnityEngine.UI.Toggle _toggle;
 
@@ -19,8 +17,8 @@ namespace Project._Scripts.Library.UI
 
     public void SetBoundary()
     {
-      _proceduralTerrainGenerator.SetBoundary(_toggle.isOn);
-      if(_toggle.isOn)_proceduralTerrainGenerator.RegenerateTerrain();
+      ProceduralTerrainGenerator.SetBoundary(_toggle.isOn);
+      if(_toggle.isOn)ProceduralTerrainGenerator.RegenerateTerrain();
     }
   }
 }

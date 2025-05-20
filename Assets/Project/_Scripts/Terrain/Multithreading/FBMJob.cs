@@ -1,12 +1,14 @@
 ﻿using UnityEngine;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
 
 namespace Project._Scripts.Terrain.Multithreading
 {
-  using Unity.Burst;
-  using Unity.Collections;
-  using Unity.Jobs;
-  using Unity.Mathematics;
-
+  /// <summary>
+  /// fBm(Fractal Brownian Motion) Equation with seperated job
+  /// </summary>
   [BurstCompile]
   public struct FBMJob : IJobParallelFor
   {

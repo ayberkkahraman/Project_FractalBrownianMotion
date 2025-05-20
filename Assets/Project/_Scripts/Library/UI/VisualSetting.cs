@@ -1,26 +1,27 @@
 ﻿using System.Linq;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Project._Scripts.Library.UI
 {
   public class VisualSetting : MonoBehaviour
   {
-    public Material Material;
+    #region Components
+    private TMP_Text _valueText;
     public Slider Slider;
-    
+    #endregion
+
+    #region Fields
+    public Material Material;
     public enum Type{MinHeight, MaxHeight, GradientIntensity}
     public Type ValueType;
-
     public float MinValue;
     public float MaxValue;
-
     private float _sliderValue;
-    private TMP_Text _valueText;
+    #endregion
     
-
+    
     private void Awake()
     {
       _valueText = GetComponentsInChildren<TMP_Text>().FirstOrDefault(x => x.name == "ValueText");

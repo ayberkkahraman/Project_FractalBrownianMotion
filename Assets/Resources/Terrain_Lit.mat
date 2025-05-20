@@ -27,8 +27,8 @@ Material:
     m_Ints: []
     m_Floats:
     - _GradientActive: 1
-    - _GradientIntensity: 1.9699755
-    - _MaxHeight: 8.892768
+    - _GradientIntensity: 1
+    - _MaxHeight: 11.293486
     - _MidHeight: 20
     - _MinHeight: 0
     - _UseGradient: 1

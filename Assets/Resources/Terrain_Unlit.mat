@@ -30,10 +30,10 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _GradientIntensity: 1
-    - _MaxHeight: 11.25
+    - _GradientIntensity: 0
+    - _MaxHeight: 7.5
     - _MidHeight: 7
-    - _MinHeight: 0.1
+    - _MinHeight: 0
     - _UseGradient: 1
     m_Colors:
     - _Color1: {r: 0.39999998, g: 0.25999996, b: 0.12999997, a: 1}

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using Project._Scripts.Global.Manager.Core;
@@ -7,15 +6,16 @@ using Project._Scripts.Terrain;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 public class Setting : MonoBehaviour
 {
   private ProceduralTerrainGenerator _terrainGenerator;
-
-  public UnityEvent AdditiveEvent;
   private Slider _slider; 
   private TMP_Text _valueText;
   private TMP_Text _headerText;
+  
+  public UnityEvent AdditiveEvent;
   public float MinValue;
   public float MaxValue;
   public float Multiplier = 1f;
@@ -23,9 +23,9 @@ public class Setting : MonoBehaviour
   public enum Type{Integer, Float}
   public Type ValueType;
   
-  [SerializeField]private float debounceDelay = 0.3f; // saniye cinsinden bekleme süresi
-  private float debounceTimer = 0f;
-  private bool pendingUpdate = false;
+  [SerializeField]private float DebounceDelay = 0.3f;
+  private float _debounceTimer = 0f;
+  private bool _pendingUpdate = false;
 
   private void Start()
   {
@@ -48,14 +48,14 @@ public class Setting : MonoBehaviour
 
   void Update()
   {
-    if (pendingUpdate)
+    if (_pendingUpdate)
     {
-      debounceTimer -= Time.deltaTime;
-      if (debounceTimer <= 0f)
+      _debounceTimer -= Time.deltaTime;
+      if (_debounceTimer <= 0f)
       {
         _terrainGenerator.RegenerateTerrain();
         AdditiveEvent?.Invoke();
-        pendingUpdate = false;
+        _pendingUpdate = false;
       }
     }
   }
@@ -77,14 +77,14 @@ public class Setting : MonoBehaviour
     
     SetTerrainVariable(gameObject.name, sliderValue * Multiplier);
 
-    debounceTimer = debounceDelay;
-    pendingUpdate = true;
+    _debounceTimer = DebounceDelay;
+    _pendingUpdate = true;
   }
   void GetTerrainVariable(string variableName)
   {
     if (_terrainGenerator == null)
     {
-      Debug.LogWarning("TerrainGenerator referansı atanmadı.");
+      Debug.LogWarning("TerrainGenerator reference has not been defined");
       return;
     }
 
@@ -108,7 +108,7 @@ public class Setting : MonoBehaviour
             sliderValue = (float)doubleValue;
             break;
           default:
-            Debug.LogWarning($"'{variableName}' field tipi desteklenmiyor: {field.FieldType}");
+            Debug.LogWarning($"'{variableName}' type is not supported: {field.FieldType}");
             break;
         }
         
@@ -127,12 +127,12 @@ public class Setting : MonoBehaviour
       }
       catch (Exception e)
       {
-        Debug.LogWarning($"'{variableName}' için değer alınamadı: {e.Message}");
+        Debug.LogWarning($"'{variableName}' type has not been referenced: {e.Message}");
       }
     }
     else
     {
-      Debug.LogWarning($"'{variableName}' adında bir field bulunamadı.");
+      Debug.LogWarning($"'{variableName}' field has not been found.");
     }
   }
     
@@ -140,7 +140,7 @@ public class Setting : MonoBehaviour
   {
     if (_terrainGenerator == null)
     {
-      Debug.LogWarning("TerrainGenerator referansı atanmadı.");
+      Debug.LogWarning("TerrainGenerator reference has not been defined.");
       return;
     }
 
@@ -154,12 +154,12 @@ public class Setting : MonoBehaviour
       }
       catch (Exception e)
       {
-        Debug.LogWarning($"'{variableName}' için değer atanamadı: {e.Message}");
+        Debug.LogWarning($"'{variableName}' type has no reference: {e.Message}");
       }
     }
     else
     {
-      Debug.LogWarning($"'{variableName}' adında bir field bulunamadı.");
+      Debug.LogWarning($"'{variableName}' type has not been found.");
     }
   }
 }

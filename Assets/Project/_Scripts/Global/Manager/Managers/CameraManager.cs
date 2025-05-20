@@ -1,21 +1,35 @@
 ﻿using System;
 using Cinemachine;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace Project._Scripts.Global.Manager.Managers
 {
     public class CameraManager : MonoBehaviour
     {
-        #region Cameras
-        public CinemachineVirtualCamera CurrentCamera;
-        public CinemachineComponentBase ComponentBase;
+        #region Components
+        private CinemachineComponentBase _componentBase;
         #endregion
 
-        #region Initialize
+        #region Fields
+        public CinemachineVirtualCamera CurrentCamera;
+        
+        [Range(1f, 5f)]public float RotationSpeed = 3f;
+        private float _currentAngle;
+        private Vector3 _currentEulerRotation;
+        #endregion
+
+        #region Unity Functions
         private void Awake()
         {
-            ComponentBase = CurrentCamera.GetCinemachineComponent(CinemachineCore.Stage.Body);
+            _currentEulerRotation = CurrentCamera.transform.eulerAngles;
+            _componentBase = CurrentCamera.GetCinemachineComponent(CinemachineCore.Stage.Body);
+        }
+
+        private void LateUpdate()
+        {
+            _currentAngle += Time.deltaTime * RotationSpeed;
+            _currentEulerRotation.y = _currentAngle;
+            CurrentCamera.transform.localEulerAngles = _currentEulerRotation;
         }
         #endregion
         #region Camera
@@ -28,11 +42,15 @@ namespace Project._Scripts.Global.Manager.Managers
             CurrentCamera.Follow.position = pos;
         }
 
+        /// <summary>
+        /// Updates the distance of the camera
+        /// </summary>
+        /// <param name="distance"></param>
         public void UpdateDistance(float distance)
         {
-            if (ComponentBase is CinemachineFramingTransposer transposer)
+            if (_componentBase is CinemachineFramingTransposer framingTransposer)
             {
-                transposer.m_CameraDistance = distance;
+                framingTransposer.m_CameraDistance = distance;
             }
         }
         #endregion
