@@ -6,7 +6,6 @@ using Project._Scripts.Terrain;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
-using UnityEngine.Serialization;
 using UnityEngine.UI;
 public class Setting : MonoBehaviour
 {
@@ -24,8 +23,8 @@ public class Setting : MonoBehaviour
   public Type ValueType;
   
   [SerializeField]private float DebounceDelay = 0.3f;
-  private float _debounceTimer = 0f;
-  private bool _pendingUpdate = false;
+  private float _debounceTimer;
+  private bool _pendingUpdate;
 
   private void Start()
   {
@@ -46,18 +45,16 @@ public class Setting : MonoBehaviour
     _slider.onValueChanged.RemoveListener(delegate { SetSlider();});
   }
 
-  void Update()
+  private void Update()
   {
-    if (_pendingUpdate)
-    {
-      _debounceTimer -= Time.deltaTime;
-      if (_debounceTimer <= 0f)
-      {
-        _terrainGenerator.RegenerateTerrain();
-        AdditiveEvent?.Invoke();
-        _pendingUpdate = false;
-      }
-    }
+    if (!_pendingUpdate)
+      return;
+    _debounceTimer -= Time.deltaTime;
+    if (!(_debounceTimer <= 0f))
+      return;
+    _terrainGenerator.RegenerateTerrain();
+    AdditiveEvent?.Invoke();
+    _pendingUpdate = false;
   }
   
   public void SetSlider()
