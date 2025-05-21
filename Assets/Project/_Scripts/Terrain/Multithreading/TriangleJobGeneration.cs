@@ -39,6 +39,11 @@ namespace Project._Scripts.Terrain.Multithreading
         vert++;
       }
     }
+    
+    
+    
+    
+    
   }
 
 }

@@ -33,7 +33,7 @@ namespace Project._Scripts.Terrain.Multithreading
 
       float worldX = (StartX + x) / (Width * Detail) * Width;
       float worldZ = (StartZ + z) / (Length * Detail) * Length;
-      float worldY = FBM(worldX, worldZ) * HeightMultiplier; // <-- DÜZENLENDİ
+      float worldY = FBM(worldX, worldZ) * HeightMultiplier;
 
       Vertices[index] = new Vector3(worldX, worldY, worldZ);
     }
@@ -47,8 +47,8 @@ namespace Project._Scripts.Terrain.Multithreading
 
       for (int i = 0; i < Octaves; i++)
       {
-        float sampleX = x * Scale * frequency;        // <-- DÜZENLENDİ
-        float sampleZ = z * Scale * frequency;        // <-- DÜZENLENDİ
+        float sampleX = x * Scale * frequency;
+        float sampleZ = z * Scale * frequency;
 
         total += noise.snoise(new float2(sampleX, sampleZ)) * amplitude;
         maxAmplitude += amplitude;
@@ -58,7 +58,9 @@ namespace Project._Scripts.Terrain.Multithreading
 
       return total / maxAmplitude;
     }
-
+    
+    
+    
   }
 
 }
